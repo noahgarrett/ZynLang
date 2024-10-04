@@ -1,0 +1,5 @@
+.vs
+ZynLang/bin/*
+ZynLang/obj/*
+ZynLangTests/bin/*
+ZynLangTests/obj/*

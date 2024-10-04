@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZynLang", "ZynLang\ZynLang.csproj", "{7917A208-9FDC-4B19-955A-436A0A1D19B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZynLangTests", "ZynLangTests\ZynLangTests.csproj", "{E1464959-2BC0-4773-B4DD-509E5539BABB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7917A208-9FDC-4B19-955A-436A0A1D19B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7917A208-9FDC-4B19-955A-436A0A1D19B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7917A208-9FDC-4B19-955A-436A0A1D19B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7917A208-9FDC-4B19-955A-436A0A1D19B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1464959-2BC0-4773-B4DD-509E5539BABB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1464959-2BC0-4773-B4DD-509E5539BABB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1464959-2BC0-4773-B4DD-509E5539BABB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1464959-2BC0-4773-B4DD-509E5539BABB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {02E38F00-DE72-48D0-8694-A264C93782E5}
+	EndGlobalSection
+EndGlobal
