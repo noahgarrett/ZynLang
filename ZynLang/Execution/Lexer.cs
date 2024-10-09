@@ -45,7 +45,7 @@ public class Lexer
                 }
                 else // Handle +
                 {
-                    tok = newToken(TokenType.PLUS, CurrentChar);
+                    tok = newToken(TokenType.PLUS, $"{CurrentChar}");
                 }
                 break;
             case '-':
@@ -62,7 +62,7 @@ public class Lexer
                     tok = newToken(TokenType.MINUS_MINUS, $"{ch}{CurrentChar}");
                 }
                 else // Handle -
-                    tok = newToken(TokenType.MINUS, CurrentChar);
+                    tok = newToken(TokenType.MINUS, $"{CurrentChar}");
                 break;
             case '*':
                 if (peekChar() == '=') // Handle *=
@@ -72,7 +72,7 @@ public class Lexer
                     tok = newToken(TokenType.MUL_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.ASTERISK, CurrentChar);
+                    tok = newToken(TokenType.ASTERISK, $"{CurrentChar}");
                 break;
             case '/':
                 if (peekChar() == '=') // Handle /=
@@ -82,13 +82,13 @@ public class Lexer
                     tok = newToken(TokenType.DIV_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.SLASH, CurrentChar);
+                    tok = newToken(TokenType.SLASH, $"{CurrentChar}");
                 break;
             case '^':
-                tok = newToken(TokenType.POW, CurrentChar);
+                tok = newToken(TokenType.POW, $"{CurrentChar}");
                 break;
             case '%':
-                tok = newToken(TokenType.MODULUS, CurrentChar);
+                tok = newToken(TokenType.MODULUS, $"{CurrentChar}");
                 break;
             case '<':
                 if (peekChar() == '=') // Handle <=
@@ -98,7 +98,7 @@ public class Lexer
                     tok = newToken(TokenType.LT_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.LT, CurrentChar);
+                    tok = newToken(TokenType.LT, $"{CurrentChar}");
                 break;
             case '>':
                 if (peekChar() == '=') // Handle >=
@@ -108,7 +108,7 @@ public class Lexer
                     tok = newToken(TokenType.GT_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.GT, CurrentChar);
+                    tok = newToken(TokenType.GT, $"{CurrentChar}");
                 break;
             case '=':
                 if (peekChar() == '=') // Handle ==
@@ -118,7 +118,7 @@ public class Lexer
                     tok = newToken(TokenType.EQ_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.EQ, CurrentChar);
+                    tok = newToken(TokenType.EQ, $"{$"{CurrentChar}"}");
                 break;
             case '!':
                 if (peekChar() == '=') // Handle !=
@@ -128,41 +128,41 @@ public class Lexer
                     tok = newToken(TokenType.NOT_EQ, $"{ch}{CurrentChar}");
                 }
                 else
-                    tok = newToken(TokenType.BANG, CurrentChar);
+                    tok = newToken(TokenType.BANG, $"{CurrentChar}");
                 break;
             case ':':
-                tok = newToken(TokenType.COLON, CurrentChar);
+                tok = newToken(TokenType.COLON, $"{CurrentChar}");
                 break;
             case ';':
-                tok = newToken(TokenType.SEMICOLON, CurrentChar);
+                tok = newToken(TokenType.SEMICOLON, $"{CurrentChar}");
                 break;
             case ',':
-                tok = newToken(TokenType.COMMA, CurrentChar);
+                tok = newToken(TokenType.COMMA, $"{CurrentChar}");
                 break;
             case '(':
-                tok = newToken(TokenType.LPAREN, CurrentChar);
+                tok = newToken(TokenType.LPAREN, $"{CurrentChar}");
                 break;
             case ')':
-                tok = newToken(TokenType.RPAREN, CurrentChar);
+                tok = newToken(TokenType.RPAREN, $"{CurrentChar}");
                 break;
             case '{':
-                tok = newToken(TokenType.LBRACE, CurrentChar);
+                tok = newToken(TokenType.LBRACE, $"{CurrentChar}");
                 break;
             case '}':
-                tok = newToken(TokenType.RBRACE, CurrentChar);
+                tok = newToken(TokenType.RBRACE, $"{CurrentChar}");
                 break;
             case '"':
-                tok = newToken(TokenType.STRING, CurrentChar);
+                tok = newToken(TokenType.STRING, $"{CurrentChar}");
                 break;
             case '\0':
-                tok = newToken(TokenType.EOF, CurrentChar);
+                tok = newToken(TokenType.EOF, $"{CurrentChar}");
                 break;
             default:
                 if (isLetter(CurrentChar))
                 {
                     string literal = readIdentifier();
                     TokenType tt = TokenHelper.LookupIdent(literal);
-                    tok = newToken(tt, CurrentChar);
+                    tok = newToken(tt, $"{literal}");
                     return tok;
                 }
                 else if (isDigit(CurrentChar))
@@ -171,7 +171,7 @@ public class Lexer
                     return tok;
                 }
                 else
-                    tok = newToken(TokenType.ILLEGAL, CurrentChar);
+                    tok = newToken(TokenType.ILLEGAL, $"{CurrentChar}");
                 break;
         }
 

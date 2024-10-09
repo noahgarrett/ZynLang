@@ -1,9 +1,9 @@
 ﻿namespace ZynLang.AST.Helpers;
 
-public class FunctionParameterNode : Node
+public class FunctionParameterNode(string name, string valueType) : Node
 {
-    public string Name { get; set; } = string.Empty;
-    public string ValueType { get; set; } = string.Empty;
+    public string Name { get; set; } = name;
+    public string ValueType { get; set; } = valueType;
     
     public override NodeType Type()
     {

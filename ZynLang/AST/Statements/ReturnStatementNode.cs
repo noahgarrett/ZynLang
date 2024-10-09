@@ -1,6 +1,6 @@
 ﻿namespace ZynLang.AST.Statements;
 
-public class ReturnStatementNode(ExpressionNode returnValue) : Node
+public class ReturnStatementNode(ExpressionNode returnValue) : StatementNode
 {
     public ExpressionNode ReturnValue { get; set; } = returnValue;
 

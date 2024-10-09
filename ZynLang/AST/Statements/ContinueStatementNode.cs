@@ -1,6 +1,6 @@
 ﻿namespace ZynLang.AST.Statements;
 
-public class ContinueStatementNode : Node
+public class ContinueStatementNode : StatementNode
 {
     public override NodeType Type()
     {

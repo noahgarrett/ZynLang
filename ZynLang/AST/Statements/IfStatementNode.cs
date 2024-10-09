@@ -1,10 +1,10 @@
 ﻿namespace ZynLang.AST.Statements;
 
-public class IfStatementNode(ExpressionNode condition, BlockStatementNode consequence, BlockStatementNode alternative) : Node
+public class IfStatementNode(ExpressionNode condition, BlockStatementNode consequence, BlockStatementNode? alternative) : StatementNode
 {
     public ExpressionNode Condition { get; set; } = condition;
     public BlockStatementNode Consequence { get; set; } = consequence;
-    public BlockStatementNode Alternative { get; set; } = alternative;
+    public BlockStatementNode? Alternative { get; set; } = alternative;
 
     public override NodeType Type()
     {

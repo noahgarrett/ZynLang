@@ -2,7 +2,7 @@
 
 namespace ZynLang.AST.Statements;
 
-public class AssignStatementNode(IdentifierLiteralNode identifier, string op, ExpressionNode rightValue) : Node
+public class AssignStatementNode(IdentifierLiteralNode identifier, string op, ExpressionNode rightValue) : StatementNode
 {
     public IdentifierLiteralNode Identifier { get; set; } = identifier;
     public string Operator { get; set; } = op;

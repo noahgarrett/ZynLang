@@ -1,6 +1,6 @@
 ﻿namespace ZynLang.AST.Statements;
 
-public class BreakStatementNode : Node
+public class BreakStatementNode : StatementNode
 { 
     public override NodeType Type()
     {

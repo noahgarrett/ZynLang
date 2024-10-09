@@ -1,12 +1,14 @@
-﻿namespace ZynLang.AST.Statements;
+﻿using ZynLang.AST.Literals;
 
-public class LetStatementNode : Node
+namespace ZynLang.AST.Statements;
+
+public class LetStatementNode(IdentifierLiteralNode name, ExpressionNode value, string valueType) : StatementNode
 {
-    public string Name { get; set; } = string.Empty;
+    public IdentifierLiteralNode Name { get; set; } = name;
 
-    public ExpressionNode Value { get; set; }
+    public ExpressionNode Value { get; set; } = value;
 
-    public string ValueType { get; set; } = string.Empty;
+    public string ValueType { get; set; } = valueType;
 
     public override NodeType Type()
     {

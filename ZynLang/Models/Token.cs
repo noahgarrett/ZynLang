@@ -32,7 +32,7 @@ public enum TokenType
     TYPE
 }
 
-public class Token(TokenType type, dynamic? literal, int lineNo, int position)
+public class Token(TokenType type, dynamic? literal, int lineNo, int position) : IEquatable<Token>
 {
     public TokenType Type { get; set; } = type;
     public dynamic? Literal { get; set; } = literal;
@@ -42,6 +42,24 @@ public class Token(TokenType type, dynamic? literal, int lineNo, int position)
     public string Print()
     {
         return $"Token[{Type} : {Literal} : Line {LineNo} : Position {Position}]";
+    }
+
+    public bool Equals(Token? other)
+    {
+        if (other == null)
+            return false;
+
+        return Type == other.Type && Literal == other.Literal;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return Equals(obj as Token);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Type, Literal);
     }
 }
 
