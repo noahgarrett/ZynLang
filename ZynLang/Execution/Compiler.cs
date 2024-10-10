@@ -4,6 +4,7 @@ using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
 using ZynLang.AST.Literals;
 using ZynLang.AST.Statements;
+using ZynLang.Models;
 
 namespace ZynLang.Execution;
 
@@ -13,6 +14,8 @@ public class Compiler
     private LLVMBuilderRef _builder;
     private LLVMPassManagerRef _passManager;
     private LLVMExecutionEngineRef _engine;
+
+    private Context _env;
 
     private Dictionary<string, LLVMTypeRef> _typeMap;
 
@@ -26,6 +29,8 @@ public class Compiler
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 8) }
         };
+
+        _env = new();
 
         LLVM.LinkInMCJIT();
         LLVM.InitializeX86TargetMC();
@@ -132,7 +137,8 @@ public class Compiler
 
         LLVMTypeRef returnType = _typeMap[node.ReturnType];
 
-
+        // https://github.com/noahgarrett/LimeLang/blob/master/Compiler.py#L185
+        // https://github.com/davidelettieri/Kaleidoscope/blob/main/Kaleidoscope.Chapter7/Interpreter.cs
     }
 
     private void VisitAssignStatement(AssignStatementNode node)
