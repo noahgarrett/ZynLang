@@ -1,6 +1,7 @@
 ﻿using LLVMSharp.Interop;
 using ZynLang.AST;
 using ZynLang.AST.Expressions;
+using ZynLang.AST.Helpers;
 using ZynLang.AST.Literals;
 using ZynLang.AST.Statements;
 
@@ -13,8 +14,19 @@ public class Compiler
     private LLVMPassManagerRef _passManager;
     private LLVMExecutionEngineRef _engine;
 
+    private Dictionary<string, LLVMTypeRef> _typeMap;
+
     public Compiler()
     {
+        _typeMap = new()
+        {
+            {"int", LLVMTypeRef.Int32 },
+            {"float", LLVMTypeRef.Float },
+            {"bool", LLVMTypeRef.Int1 },
+            {"void", LLVMTypeRef.Void },
+            {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 8) }
+        };
+
         LLVM.LinkInMCJIT();
         LLVM.InitializeX86TargetMC();
         LLVM.InitializeX86Target();
@@ -101,11 +113,25 @@ public class Compiler
 
     private void VisitReturnStatement(ReturnStatementNode node)
     {
-
+        
     }
 
     private void VisitFunctionStatement(FunctionStatementNode node)
     {
+        string name = node.Name.Value;
+        BlockStatementNode body = node.Body;
+        List<FunctionParameterNode> parameters = node.Parameters;
+
+        List<string> paramNames = [];
+        foreach (var param in parameters)
+            paramNames.Add(param.Name);
+
+        List<LLVMTypeRef> paramTypes = [];
+        foreach (var param in parameters)
+            paramTypes.Add(_typeMap[param.ValueType]);
+
+        LLVMTypeRef returnType = _typeMap[node.ReturnType];
+
 
     }
 
