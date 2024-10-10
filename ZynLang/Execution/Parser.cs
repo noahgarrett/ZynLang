@@ -41,8 +41,8 @@ public static class ParserHelper
     public static readonly List<TokenType> AssignmentOperators = [TokenType.EQ, TokenType.PLUS_EQ, TokenType.MINUS_EQ, TokenType.MUL_EQ, TokenType.DIV_EQ];
 }
 
-public delegate ExpressionNode PrefixFunction();
-public delegate ExpressionNode InfixFunction(ExpressionNode expr);
+public delegate Node? PrefixFunction();
+public delegate Node? InfixFunction(ExpressionNode expr);
 
 public class Parser
 {
@@ -52,16 +52,6 @@ public class Parser
 
     public Token? CurrentToken { get; set; } = null;
     public Token? PeekToken { get; set; } = null;
-
-    public Dictionary<TokenType, PrefixFunction> PrefixParseFns { get; set; } = new()
-    {
-
-    };
-
-    public Dictionary<TokenType, InfixFunction> InfixParseFns { get; set; } = new()
-    {
-
-    };
 
     public Parser(Lexer lexer)
     {
@@ -384,23 +374,28 @@ public class Parser
     #endregion
 
     #region Expression Functions
-    private ExpressionNode ParseExpression(PrecedenceType precedence)
+    private ExpressionNode? ParseExpression(PrecedenceType precedence)
     {
-        if (!PrefixParseFns.TryGetValue(CurrentToken?.Type ?? TokenType.ILLEGAL, out PrefixFunction? prefixFn))
+        PrefixFunction? prefixFn = GetPrefixFunction(CurrentToken?.Type ?? TokenType.ILLEGAL);
+        if (prefixFn == null)
+        {
             NoPrefixParseFnError(CurrentToken?.Type ?? TokenType.ILLEGAL);
+            return null;
+        }
 
-        ExpressionNode leftExpr = prefixFn();
+        Node? leftExpr = prefixFn();
         while (!PeekTokenIs(TokenType.SEMICOLON) && (int)precedence < (int)PeekPrecedence())
         {
-            if (!InfixParseFns.TryGetValue(PeekToken?.Type ?? TokenType.ILLEGAL, out InfixFunction? infixFn))
-                return leftExpr;
+            InfixFunction? infixFn = GetInfixFunction(CurrentToken?.Type ?? TokenType.ILLEGAL);
+            if (infixFn == null)
+                return (ExpressionNode?)leftExpr;
 
             NextToken();
 
-            leftExpr = infixFn(leftExpr);
+            leftExpr = infixFn((ExpressionNode)leftExpr);
         }
 
-        return leftExpr;
+        return (ExpressionNode?)leftExpr;
     }
 
     private ExpressionNode ParseInfixExpression(ExpressionNode leftNode)
@@ -433,9 +428,9 @@ public class Parser
         return expr;
     }
 
-    private CallExpressionNode ParseCallExpression(IdentifierLiteralNode function)
+    private CallExpressionNode ParseCallExpression(ExpressionNode function)
     {
-        return new CallExpressionNode(function, ParseExpressionList(TokenType.RPAREN));
+        return new CallExpressionNode((IdentifierLiteralNode)function, ParseExpressionList(TokenType.RPAREN));
     } 
 
     private List<ExpressionNode> ParseExpressionList(TokenType end)
@@ -506,6 +501,47 @@ public class Parser
     #endregion
 
     #region Helper Functions
+    private PrefixFunction? GetPrefixFunction(TokenType tt)
+    {
+        return tt switch
+        {
+            TokenType.IDENT => ParseIdentifier,
+            TokenType.INT => ParseIntLiteral,
+            TokenType.FLOAT => ParseFloatLiteral,
+            TokenType.LPAREN => ParseGroupedExpression,
+            TokenType.IF => ParseIfStatement,
+            TokenType.TRUE => ParseBooleanLiteral,
+            TokenType.FALSE => ParseBooleanLiteral,
+            TokenType.STRING => ParseStringLiteral,
+            TokenType.MINUS => ParsePrefixExpression,
+            TokenType.BANG => ParsePrefixExpression,
+            _ => null,
+        };
+    }
+
+    private InfixFunction? GetInfixFunction(TokenType tt)
+    {
+        return tt switch
+        {
+            TokenType.PLUS => ParseInfixExpression,
+            TokenType.MINUS => ParseInfixExpression,
+            TokenType.SLASH => ParseInfixExpression,
+            TokenType.ASTERISK => ParseInfixExpression,
+            TokenType.POW => ParseInfixExpression,
+            TokenType.MODULUS => ParseInfixExpression,
+            TokenType.EQ_EQ => ParseInfixExpression,
+            TokenType.NOT_EQ => ParseInfixExpression,
+            TokenType.LT => ParseInfixExpression,
+            TokenType.GT => ParseInfixExpression,
+            TokenType.LT_EQ => ParseInfixExpression,
+            TokenType.GT_EQ => ParseInfixExpression,
+            TokenType.LPAREN => ParseCallExpression,
+            TokenType.PLUS_PLUS => ParsePostfixExpression,
+            TokenType.MINUS_MINUS => ParsePostfixExpression,
+            _ => null,
+        };
+    }
+
     private void NextToken()
     {
         CurrentToken = PeekToken;
@@ -542,6 +578,6 @@ public class Parser
     }
 
     private void PeekError(TokenType type) => Errors.Add($"Expected next token to be {nameof(type)}, got {nameof(PeekToken.Type)}");
-    private void NoPrefixParseFnError(TokenType type) => Errors.Add($"No Prefix Parse Function for {nameof(type)} found.");
+    private void NoPrefixParseFnError(TokenType type) => Errors.Add($"No Prefix Parse Function for {type} found.");
     #endregion
 }

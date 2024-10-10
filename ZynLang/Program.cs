@@ -1,20 +1,45 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics.Metrics;
+using System.Text.Json;
 using ZynLang.AST;
 using ZynLang.Execution;
-using static System.Net.Mime.MediaTypeNames;
 using ZynLang.Models;
 namespace ZynLang;
 
 internal class Program
 {
+    public static bool LexerDebug = true;
+    public static bool ParserDebug = false;
+
+    static void DebugLexer(Lexer lexer)
+    {
+        List<Token> tokens = [];
+        Token lastToken = lexer.NextToken();
+        tokens.Add(lastToken);
+        while (lastToken.Type != TokenType.EOF)
+        {
+            lastToken = lexer.NextToken();
+            tokens.Add(lastToken);
+        }
+
+        foreach (Token token in tokens)
+        {
+            Console.WriteLine(token.Print());
+        }
+    }
+
     static void Main(string[] args)
     {
-        Lexer lexer = new("let a = 5;");
-        //Parser parser = new(lexer);
+        string source = "1 + 1;";
 
-        List<Token> tokens = [];
+        if (LexerDebug)
+            DebugLexer(new Lexer(source));
 
-        Token lastToken = lexer.NextToken();
+        Lexer lexer = new(source);
+        Parser parser = new(lexer);
+
+        
+
+        /*Token lastToken = lexer.NextToken();
         tokens.Add(lastToken);
         while (lastToken.Type != TokenType.EOF)
         {
@@ -25,9 +50,9 @@ internal class Program
         foreach(Token token in tokens)
         {
             Console.WriteLine(token.Print());
-        }
+        }*/
 
-        /*
+        
         ProgramNode programNode = parser.ParseProgram();
         if (parser.Errors.Count > 0)
         {
@@ -35,6 +60,17 @@ internal class Program
                 Console.WriteLine($"Parser Error: {error}");
         }
 
-        Console.WriteLine(JsonSerializer.Serialize(programNode));*/
+        /*JsonSerializerOptions options = new()
+        {
+            WriteIndented = true,
+        };
+
+        foreach (var stmt in programNode.Statements)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(stmt, options));
+        }*/
+
+        Compiler compiler = new();
+        compiler.Run(programNode);
     }
 }

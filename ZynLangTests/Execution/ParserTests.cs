@@ -7,7 +7,7 @@ namespace ZynLangTests.Execution.Tests;
 public class ParserTests
 {
     [TestMethod]
-    [DataRow("let a = 4;", NodeType.LetStatement)]
+    [DataRow("let a: int = 4;", NodeType.LetStatement)]
     public void NodeTypeTests(string test, NodeType expectedNT)
     {
         Lexer lexer = new(test);
@@ -16,10 +16,12 @@ public class ParserTests
         ProgramNode programNode = parser.ParseProgram();
         if (parser.Errors.Count > 0)
         {
-            foreach (var error in parser.Errors)
-                Console.WriteLine($"Parser Error: {error}");
+            string errorOutput = string.Empty;
 
-            Assert.Fail();
+            foreach (var error in parser.Errors)
+                errorOutput += $"\n- Parser Error: {error}";
+
+            Assert.Fail(errorOutput);
         }
 
         if (programNode.Statements.Count == 0)
