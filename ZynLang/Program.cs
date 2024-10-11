@@ -29,7 +29,7 @@ internal class Program
 
     static void Main(string[] args)
     {
-        string source = "1 + 1;";
+        string source = "fn main() int { return 0; }";
 
         if (LexerDebug)
             DebugLexer(new Lexer(source));

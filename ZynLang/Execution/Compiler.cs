@@ -66,6 +66,12 @@ public class Compiler
             case NodeType.FunctionStatement:
                 VisitFunctionStatement((FunctionStatementNode)node);
                 break;
+            case NodeType.ReturnStatement:
+                VisitReturnStatement((ReturnStatementNode)node);
+                break;
+            case NodeType.BlockStatement:
+                VisitBlockStatement((BlockStatementNode)node);
+                break;
 
             // Expressions
             case NodeType.InfixExpression:
@@ -113,12 +119,17 @@ public class Compiler
 
     private void VisitBlockStatement(BlockStatementNode node)
     {
-
+        foreach (StatementNode statement in node.Statements)
+            Compile(statement);
     }
 
     private void VisitReturnStatement(ReturnStatementNode node)
     {
-        
+        Console.WriteLine("HITTTT");
+        ExpressionNode rValue = node.ReturnValue;
+        var (value, type) = ResolveValue(rValue);
+
+        _builder.BuildRet(value);
     }
 
     private void VisitFunctionStatement(FunctionStatementNode node)
@@ -139,6 +150,55 @@ public class Compiler
 
         // https://github.com/noahgarrett/LimeLang/blob/master/Compiler.py#L185
         // https://github.com/davidelettieri/Kaleidoscope/blob/main/Kaleidoscope.Chapter7/Interpreter.cs
+
+        LLVMValueRef f = _module.GetNamedFunction(name);
+
+        // TODO: Explain this or modify/remove
+        if (f.Handle != IntPtr.Zero)
+        {
+            if (f.BasicBlocksCount != 0)
+                throw new InvalidOperationException("Redefinition of function.");
+            if (f.ParamsCount != parameters.Count)
+                throw new InvalidOperationException("Redefinition of function with a different amount of args");
+        }
+
+        LLVMTypeRef function = LLVMTypeRef.CreateFunction(returnType, paramTypes.ToArray());
+
+        f = _module.AddFunction(name, function);
+        f.Linkage = LLVMLinkage.LLVMExternalLinkage;
+
+        var block = f.AppendBasicBlock($"{name}_entry");
+        _builder.PositionAtEnd(block);
+
+        var previousEnv = _env;
+        _env = new(parent: previousEnv, name: $"{name}_env");
+
+        // Loop through all parameters and generate store instructions in the function block
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            var p = parameters[i];
+
+            var param = f.GetParam((uint)i);
+            param.Name = p.Name;
+
+            var paramPtr = _builder.BuildAlloca(paramTypes[i], p.Name);
+            _builder.BuildStore(param, paramPtr);
+
+            _env.Define(p.Name, paramPtr, paramTypes[i]);
+        }
+
+        _env.Define(name, f, returnType);
+
+        Compile(body);
+
+        if (node.ReturnType == "void")
+            _builder.BuildRetVoid();
+
+        _env = previousEnv;
+        _env.Define(name, f, returnType);
+
+        // TODO: Maybe delete or move somewhere else
+        //_passManager.RunFunctionPassManager(f);
     }
 
     private void VisitAssignStatement(AssignStatementNode node)
@@ -221,7 +281,7 @@ public class Compiler
         {
             case NodeType.IntegerLiteral:
                 IntegerLiteralNode _node = (IntegerLiteralNode)node;
-                return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Int32, _node.Value), LLVMTypeRef.Int32);
+                return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)_node.Value), LLVMTypeRef.Int32);
             default:
                 Console.WriteLine("RESOLVE VALUE WENT TO DEFAULT WTF DUDE");
                 return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Int32, 69), LLVMTypeRef.Int32);
