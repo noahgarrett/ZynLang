@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using System.Net.Mail;
 using ZynLang.AST;
 using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
@@ -15,9 +16,14 @@ public class Compiler
     private LLVMPassManagerRef _passManager;
     private LLVMExecutionEngineRef _engine;
 
+    private LLVMValueRef _mainFunction;
+    private LLVMValueRef _currentFunction;
+
     private Context _env;
 
     private Dictionary<string, LLVMTypeRef> _typeMap;
+
+    public List<string> Errors = [];
 
     public Compiler()
     {
@@ -47,6 +53,27 @@ public class Compiler
         VisitProgram(node);
     }
 
+    public void Execute()
+    {
+        _module.Verify(LLVMVerifierFailureAction.LLVMPrintMessageAction);
+
+        var res = _engine.RunFunction(_mainFunction, Array.Empty<LLVMGenericValueRef>());
+
+        ulong resultAsInt = 2;
+
+        unsafe
+        {
+            resultAsInt = LLVM.GenericValueToInt(res, 1);
+        }
+        
+
+        Console.WriteLine("> {0}", resultAsInt);
+
+        _builder.Dispose();
+        _module.Dispose();
+        //_engine.Dispose();
+    }
+
     // 1 + 1;
     private void Compile(Node node)
     {
@@ -72,6 +99,9 @@ public class Compiler
             case NodeType.BlockStatement:
                 VisitBlockStatement((BlockStatementNode)node);
                 break;
+            case NodeType.IfStatement:
+                VisitIfStatement((IfStatementNode)node);
+                break;
 
             // Expressions
             case NodeType.InfixExpression:
@@ -86,14 +116,14 @@ public class Compiler
         _builder = _module.Context.CreateBuilder();
 
         // Initialize all optimization passes
-        _passManager = _module.CreateFunctionPassManager();
+        /*_passManager = _module.CreateFunctionPassManager();
         _passManager.AddBasicAliasAnalysisPass();
         _passManager.AddPromoteMemoryToRegisterPass();
         _passManager.AddInstructionCombiningPass();
         _passManager.AddReassociatePass();
         _passManager.AddGVNPass();
         _passManager.AddCFGSimplificationPass();
-        _passManager.InitializeFunctionPassManager();
+        _passManager.InitializeFunctionPassManager();*/
 
         _engine = _module.CreateMCJITCompiler();
     }
@@ -114,7 +144,33 @@ public class Compiler
 
     private void VisitLetStatement(LetStatementNode node)
     {
+        string name = node.Name.Value;
+        ExpressionNode nodeValue = node.Value;
+        string valueType = node.ValueType;
 
+        var (value, type) = ResolveValue(nodeValue);
+
+        // Verify the value's type matches what was indicated
+        if (type != _typeMap[valueType])
+        {
+            Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
+            return;
+        }
+
+        if (_env.Lookup(name) == null)
+        {
+            LLVMValueRef ptr = _builder.BuildAlloca(type);
+
+            _builder.BuildStore(value, ptr);
+
+            _env.Define(name, ptr, type);
+        }
+        else
+        {
+            var lookupResult = _env.Lookup(name);
+            if (lookupResult is (LLVMValueRef vPtr, LLVMTypeRef vType))
+                _builder.BuildStore(value, vPtr);
+        }
     }
 
     private void VisitBlockStatement(BlockStatementNode node)
@@ -125,7 +181,6 @@ public class Compiler
 
     private void VisitReturnStatement(ReturnStatementNode node)
     {
-        Console.WriteLine("HITTTT");
         ExpressionNode rValue = node.ReturnValue;
         var (value, type) = ResolveValue(rValue);
 
@@ -167,6 +222,11 @@ public class Compiler
         f = _module.AddFunction(name, function);
         f.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
+        if (name == "main")
+            _mainFunction = f;
+
+        _currentFunction = f;
+
         var block = f.AppendBasicBlock($"{name}_entry");
         _builder.PositionAtEnd(block);
 
@@ -203,12 +263,97 @@ public class Compiler
 
     private void VisitAssignStatement(AssignStatementNode node)
     {
+        string name = node.Identifier.Value;
+        string op = node.Operator;
+        ExpressionNode rightNode = node.RightValue;
 
+        if (_env.Lookup(name) == null)
+        {
+            Errors.Add($"Compiler: Identifier {name} has not been declared before it was re-assigned");
+            return;
+        }
+
+        var (rightValue, rightType) = ResolveValue(rightNode);
+
+        var lookupResult = _env.Lookup(name);
+        if (!lookupResult.HasValue)
+        {
+            Errors.Add($"Compiler: Unable to lookup existing variable for re-assignment with name: {name}");
+            return;
+        }
+
+        var (vPtr, vType) = lookupResult.Value;
+        LLVMValueRef origValue = _builder.BuildLoad2(vType, vPtr);
+
+
+        LLVMValueRef value = origValue;
+        switch (op)
+        {
+            case "=":
+                value = rightValue;
+                break;
+            case "+=":
+                if (vType == LLVMTypeRef.Int32 && rightType == LLVMTypeRef.Int32)
+                    value = _builder.BuildAdd(origValue, rightValue);
+                else
+                    value = _builder.BuildFAdd(origValue, rightValue);
+                break;
+            case "-=":
+                if (vType == LLVMTypeRef.Int32 && rightType == LLVMTypeRef.Int32)
+                    value = _builder.BuildSub(origValue, rightValue);
+                else
+                    value = _builder.BuildFSub(origValue, rightValue);
+                break;
+            case "*=":
+                if (vType == LLVMTypeRef.Int32 && rightType == LLVMTypeRef.Int32)
+                    value = _builder.BuildMul(origValue, rightValue);
+                else
+                    value = _builder.BuildFMul(origValue, rightValue);
+                break;
+            case "/=":
+                if (vType == LLVMTypeRef.Int32 && rightType == LLVMTypeRef.Int32)
+                    value = _builder.BuildSDiv(origValue, rightValue);
+                else
+                    value = _builder.BuildFDiv(origValue, rightValue);
+                break;
+            case "_":
+                Errors.Add($"Compiler: Unsupported assignment operator ({op})");
+                return;
+        }
+
+        _builder.BuildStore(value, vPtr);
     }
 
     private void VisitIfStatement(IfStatementNode node)
     {
+        ExpressionNode condition = node.Condition;
+        BlockStatementNode consequence = node.Consequence;
+        BlockStatementNode? alternative = node.Alternative;
 
+        var (testValue, testType) = ResolveValue(condition);
+
+        // Create the basic blocks for the 'then', 'else', and 'merge' parts
+        LLVMBasicBlockRef thenBlock = _currentFunction.AppendBasicBlock("then");
+        LLVMBasicBlockRef elseBlock = null;
+        if (alternative != null)
+             elseBlock = _currentFunction.AppendBasicBlock("else");
+        LLVMBasicBlockRef mergeBlock = _currentFunction.AppendBasicBlock("merge");
+
+        // Create the conditional branch based on the condition
+        _builder.BuildCondBr(testValue, thenBlock, alternative == null ? mergeBlock : elseBlock);
+
+        _builder.PositionAtEnd(thenBlock);
+        Compile(consequence);
+        //_builder.BuildBr(mergeBlock);
+
+        if (alternative != null && elseBlock != null)
+        {
+            _builder.PositionAtEnd(elseBlock);
+            Compile(alternative);
+            //_builder.BuildBr(mergeBlock);
+        }
+
+        _builder.PositionAtEnd(mergeBlock);
     }
 
     private void VisitWhileStatement(WhileStatementNode node)
@@ -240,17 +385,26 @@ public class Compiler
     private (LLVMValueRef, LLVMTypeRef) VisitInfixExpression(InfixExpressionNode node)
     {
         string op = node.Operator;
-        var (leftValue, leftType) = ResolveValue(node);
-        var (rightValue, rightType) = ResolveValue(node);
+        var (leftValue, leftType) = ResolveValue(node.LeftNode);
+        var (rightValue, rightType) = ResolveValue(node.RightNode);
 
-        if (rightType.ElementType == LLVMTypeRef.Int32 && leftType.ElementType == LLVMTypeRef.Int32)
+        if (rightType == LLVMTypeRef.Int32 && leftType == LLVMTypeRef.Int32)
         {
             return op switch
             {
+                // Arithmetic
                 "+" => (_builder.BuildAdd(leftValue, rightValue), LLVMTypeRef.Int32),
                 "-" => (_builder.BuildSub(leftValue, rightValue), LLVMTypeRef.Int32),
                 "*" => (_builder.BuildMul(leftValue, rightValue), LLVMTypeRef.Int32),
                 "/" => (_builder.BuildSDiv(leftValue, rightValue), LLVMTypeRef.Int32),
+
+                // Comparison
+                "<" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, leftValue, rightValue), LLVMTypeRef.Int1),
+                "<=" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, leftValue, rightValue), LLVMTypeRef.Int1),
+                ">" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, leftValue, rightValue), LLVMTypeRef.Int1),
+                ">=" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, leftValue, rightValue), LLVMTypeRef.Int1),
+                "==" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, leftValue, rightValue), LLVMTypeRef.Int1),
+
                 _ => (leftValue, LLVMTypeRef.Int32),
             };
         }
@@ -259,15 +413,15 @@ public class Compiler
         return (leftValue, LLVMTypeRef.Int32);
     }
 
-    private void VisitCallExpression(CallExpressionNode node)
+    /*private (LLVMValueRef, LLVMTypeRef) VisitCallExpression(CallExpressionNode node)
     {
 
     }
 
-    private void VisitPrefixExpression(PrefixExpressionNode node)
+    private (LLVMValueRef, LLVMTypeRef) VisitPrefixExpression(PrefixExpressionNode node)
     {
 
-    }
+    }*/
     private void VisitPostfixExpression(PostfixExpressionNode node)
     {
         
@@ -282,6 +436,19 @@ public class Compiler
             case NodeType.IntegerLiteral:
                 IntegerLiteralNode _node = (IntegerLiteralNode)node;
                 return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)_node.Value), LLVMTypeRef.Int32);
+            case NodeType.BooleanLiteral:
+                BooleanLiteralNode bNode = (BooleanLiteralNode)node;
+                int boolConv = bNode.Value ? 1 : 0;
+                return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, (ulong)boolConv), LLVMTypeRef.Int1);
+
+            // Expression Values
+            case NodeType.InfixExpression:
+                return VisitInfixExpression((InfixExpressionNode)node);
+            /*case NodeType.CallExpression:
+                return VisitCallExpression((CallExpressionNode)node);
+            case NodeType.PrefixExpression:
+                return VisitPrefixExpression((PrefixExpressionNode)node);*/
+
             default:
                 Console.WriteLine("RESOLVE VALUE WENT TO DEFAULT WTF DUDE");
                 return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Int32, 69), LLVMTypeRef.Int32);

@@ -372,7 +372,7 @@ public class Parser
         return parameters;
     }
     #endregion
-
+    
     #region Expression Functions
     private ExpressionNode? ParseExpression(PrecedenceType precedence)
     {
@@ -386,7 +386,7 @@ public class Parser
         Node? leftExpr = prefixFn();
         while (!PeekTokenIs(TokenType.SEMICOLON) && (int)precedence < (int)PeekPrecedence())
         {
-            InfixFunction? infixFn = GetInfixFunction(CurrentToken?.Type ?? TokenType.ILLEGAL);
+            InfixFunction? infixFn = GetInfixFunction(PeekToken?.Type ?? TokenType.ILLEGAL);
             if (infixFn == null)
                 return (ExpressionNode?)leftExpr;
 

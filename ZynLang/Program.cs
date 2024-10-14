@@ -29,28 +29,13 @@ internal class Program
 
     static void Main(string[] args)
     {
-        string source = "fn main() int { return 0; }";
+        string source = "fn main() int { if (1 == 1) { return 420; } return 69; }";
 
         if (LexerDebug)
             DebugLexer(new Lexer(source));
 
         Lexer lexer = new(source);
         Parser parser = new(lexer);
-
-        
-
-        /*Token lastToken = lexer.NextToken();
-        tokens.Add(lastToken);
-        while (lastToken.Type != TokenType.EOF)
-        {
-            lastToken = lexer.NextToken();
-            tokens.Add(lastToken);
-        }
-
-        foreach(Token token in tokens)
-        {
-            Console.WriteLine(token.Print());
-        }*/
 
         
         ProgramNode programNode = parser.ParseProgram();
@@ -72,5 +57,7 @@ internal class Program
 
         Compiler compiler = new();
         compiler.Run(programNode);
+
+        compiler.Execute();
     }
 }
