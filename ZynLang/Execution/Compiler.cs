@@ -132,6 +132,12 @@ public class Compiler
             case NodeType.InfixExpression:
                 VisitInfixExpression((InfixExpressionNode)node);
                 break;
+            case NodeType.CallExpression:
+                VisitCallExpression((CallExpressionNode)node);
+                break;
+            case NodeType.PostfixExpression:
+                VisitPostfixExpression((PostfixExpressionNode)node);
+                break;
         }
     }
 
@@ -589,14 +595,18 @@ public class Compiler
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
                 int boolConv = bNode.Value ? 1 : 0;
                 return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int1, (ulong)boolConv), LLVMTypeRef.Int1);
+            case NodeType.IdentifierLiteral:
+                IdentifierLiteralNode ident = (IdentifierLiteralNode)node;
+                var (ptr, type) = ((LLVMValueRef, LLVMTypeRef))_env.Lookup(ident.Value);
+                return (_builder.BuildLoad2(type, ptr), type);
 
             // Expression Values
             case NodeType.InfixExpression:
                 return VisitInfixExpression((InfixExpressionNode)node);
-            /*case NodeType.CallExpression:
+            case NodeType.CallExpression:
                 return VisitCallExpression((CallExpressionNode)node);
             case NodeType.PrefixExpression:
-                return VisitPrefixExpression((PrefixExpressionNode)node);*/
+                return VisitPrefixExpression((PrefixExpressionNode)node);
 
             default:
                 Console.WriteLine("RESOLVE VALUE WENT TO DEFAULT WTF DUDE");

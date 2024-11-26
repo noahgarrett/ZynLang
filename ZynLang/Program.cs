@@ -29,12 +29,13 @@ internal class Program
 
     static void Main(string[] args)
     {
-        string source = "fn main() int { if (1 == 1) { return 420; } return 69; }";
+        string filePath = "C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
+        string fileContent = File.ReadAllText(filePath);
 
         if (LexerDebug)
-            DebugLexer(new Lexer(source));
+            DebugLexer(new Lexer(fileContent));
 
-        Lexer lexer = new(source);
+        Lexer lexer = new(fileContent);
         Parser parser = new(lexer);
 
         
