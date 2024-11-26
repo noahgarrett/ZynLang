@@ -1,11 +1,14 @@
-fn add(a: int, b: int) int {
-	return a + b;
+fn outer() int {
+	fn inner() int {
+		return 69;
+	}
+
+	return inner();
 }
 
-fn main() int { 
-	if (1 == 1) { 
-		return add(5, 6); 
-	} 
-	
-	return 69; 
+fn main() int {
+	let i: int = 0;
+	let x: int = outer();
+
+	return i + x;
 }

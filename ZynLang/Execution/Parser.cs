@@ -108,6 +108,8 @@ public class Parser
 
         ExpressionNode rightValue = ParseExpression(PrecedenceType.LOWEST);
 
+        NextToken();
+
         return new AssignStatementNode(ident, op, rightValue);
     }
 
@@ -279,7 +281,8 @@ public class Parser
 
         NextToken();
 
-        AssignStatementNode action = ParseAssignStatement();
+        //AssignStatementNode action = ParseAssignStatement();
+        ExpressionNode action = ParseExpression(PrecedenceType.LOWEST);
 
         if (!ExpectPeek(TokenType.RPAREN))
             return null;
@@ -296,7 +299,7 @@ public class Parser
     {
         if (!ExpectPeek(TokenType.STRING))
             return null;
-
+        
         ImportStatementNode? stmt = new(CurrentToken?.Literal ?? "");
 
         if (!ExpectPeek(TokenType.SEMICOLON))
@@ -436,6 +439,7 @@ public class Parser
     private List<ExpressionNode> ParseExpressionList(TokenType end)
     {
         List<ExpressionNode> eList = [];
+
 
         if (PeekTokenIs(end))
         {

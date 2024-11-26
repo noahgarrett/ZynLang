@@ -27,6 +27,7 @@ public class Lexer
         Token tok;
 
         skipWhitespace();
+        skipComment();
 
         switch (CurrentChar)
         {
@@ -152,7 +153,7 @@ public class Lexer
                 tok = newToken(TokenType.RBRACE, $"{CurrentChar}");
                 break;
             case '"':
-                tok = newToken(TokenType.STRING, $"{CurrentChar}");
+                tok = newToken(TokenType.STRING, readString());
                 break;
             case '\0':
                 tok = newToken(TokenType.EOF, $"{CurrentChar}");
@@ -177,6 +178,21 @@ public class Lexer
 
         readChar();
         return tok;
+    }
+
+    private void skipComment()
+    {
+        if (CurrentChar == '/' && peekChar() == '/')
+        {
+            readChar();
+            readChar();
+
+            while (CurrentChar != '\n')
+                readChar();
+
+            // Skip the \n
+            readChar();
+        }
     }
 
     /// <summary>
@@ -291,5 +307,19 @@ public class Lexer
             return newToken(TokenType.INT, int.Parse(output));
         else
             return newToken(TokenType.FLOAT, float.Parse(output));
+    }
+
+    private string readString()
+    {
+        int startPos = Position + 1;
+
+        while (true)
+        {
+            readChar();
+            if (CurrentChar == '"' || CurrentChar == '\0')
+                break;
+        }
+
+        return Source[startPos..Position];
     }
 }

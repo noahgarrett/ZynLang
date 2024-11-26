@@ -61,6 +61,7 @@ public class Compiler
 
     public void Execute()
     {
+        _module.PrintToString();
         _module.Verify(LLVMVerifierFailureAction.LLVMPrintMessageAction);
 
         var res = _engine.RunFunction(_mainFunction, Array.Empty<LLVMGenericValueRef>());
@@ -80,17 +81,14 @@ public class Compiler
         //_engine.Dispose();
     }
 
-    private T Pop<T>(List<T> list)
+    // Function to extract the return type from a function type
+    LLVMTypeRef GetReturnType(LLVMTypeRef type)
     {
-        if (list == null || list.Count == 0)
-            throw new InvalidOperationException("The list is empty or null.");
-
-        // Get the last element
-        T value = list[^1]; // ^1 means the last element
-        // Remove the last element
-        list.RemoveAt(list.Count - 1);
-
-        return value;
+        if (type.Kind == LLVMTypeKind.LLVMFunctionTypeKind) // Check if the type is a function type
+        {
+            return type.ReturnType; // Extract the return type
+        }
+        return type; // Otherwise, it's already the return type
     }
 
     private uint IncrementCounter()
@@ -126,6 +124,21 @@ public class Compiler
                 break;
             case NodeType.IfStatement:
                 VisitIfStatement((IfStatementNode)node);
+                break;
+            case NodeType.AssignStatement:
+                VisitAssignStatement((AssignStatementNode)node);
+                break;
+            case NodeType.WhileStatement:
+                VisitWhileStatement((WhileStatementNode)node);
+                break;
+            case NodeType.ForStatement:
+                VisitForStatement((ForStatementNode)node);
+                break;
+            case NodeType.BreakStatement:
+                VisitBreakStatement((BreakStatementNode)node);
+                break;
+            case NodeType.ContinueStatement:
+                VisitContinueStatement((ContinueStatementNode)node);
                 break;
 
             // Expressions
@@ -182,7 +195,7 @@ public class Compiler
         var (value, type) = ResolveValue(nodeValue);
 
         // Verify the value's type matches what was indicated
-        if (type != _typeMap[valueType])
+        if (GetReturnType(type) != _typeMap[valueType])
         {
             Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
             return;
@@ -190,8 +203,8 @@ public class Compiler
 
         if (_env.Lookup(name) == null)
         {
-            LLVMValueRef ptr = _builder.BuildAlloca(type);
-
+            LLVMValueRef ptr = _builder.BuildAlloca(GetReturnType(type));
+            
             _builder.BuildStore(value, ptr);
 
             _env.Define(name, ptr, type);
@@ -248,16 +261,18 @@ public class Compiler
                 throw new InvalidOperationException("Redefinition of function with a different amount of args");
         }
 
-        LLVMTypeRef function = LLVMTypeRef.CreateFunction(returnType, paramTypes.ToArray());
+        LLVMTypeRef functionType = LLVMTypeRef.CreateFunction(returnType, paramTypes.ToArray());
 
-        f = _module.AddFunction(name, function);
+        f = _module.AddFunction(name, functionType);
         f.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
         if (name == "main")
             _mainFunction = f;
 
+        var previousFunction = _currentFunction;
         _currentFunction = f;
 
+        var previousBlock = _builder.InsertBlock;
         var block = f.AppendBasicBlock($"{name}_entry");
         _builder.PositionAtEnd(block);
 
@@ -285,9 +300,12 @@ public class Compiler
         if (node.ReturnType == "void")
             _builder.BuildRetVoid();
 
-        _env = previousEnv;
-        _env.Define(name, f, returnType);
+        _currentFunction = previousFunction;
 
+        _env = previousEnv;
+        _env.Define(name, f, functionType);
+
+        _builder.PositionAtEnd(previousBlock);
         // TODO: Maybe delete or move somewhere else
         //_passManager.RunFunctionPassManager(f);
     }
@@ -428,13 +446,15 @@ public class Compiler
     {
         LetStatementNode varDeclaration = node.VarDeclaration;
         ExpressionNode condition = node.Condition;
-        AssignStatementNode action = node.Action;
+        ExpressionNode action = node.Action;
         BlockStatementNode body = node.Body;
 
         var idCounter = IncrementCounter();
 
         var previousEnv = _env;
         _env = new(parent: previousEnv, name: $"for_env_{idCounter}");
+
+        Compile(varDeclaration);
 
         LLVMBasicBlockRef forEntryBlock = _currentFunction.AppendBasicBlock($"for_entry_{idCounter}");
         LLVMBasicBlockRef forOtherwiseBlock = _currentFunction.AppendBasicBlock($"for_otherwise_{idCounter}");
@@ -598,7 +618,7 @@ public class Compiler
             case NodeType.IdentifierLiteral:
                 IdentifierLiteralNode ident = (IdentifierLiteralNode)node;
                 var (ptr, type) = ((LLVMValueRef, LLVMTypeRef))_env.Lookup(ident.Value);
-                return (_builder.BuildLoad2(type, ptr), type);
+                return (_builder.BuildLoad2(GetReturnType(type), ptr), GetReturnType(type));
 
             // Expression Values
             case NodeType.InfixExpression:
