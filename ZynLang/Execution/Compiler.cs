@@ -1,5 +1,6 @@
 ﻿using LLVMSharp.Interop;
 using System.Net.Mail;
+using System.Xml.Linq;
 using ZynLang.AST;
 using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
@@ -22,6 +23,11 @@ public class Compiler
     private Context _env;
 
     private Dictionary<string, LLVMTypeRef> _typeMap;
+
+    private uint counter = 0;
+
+    private List<LLVMBasicBlockRef> Breakpoints = new();
+    private List<LLVMBasicBlockRef> Continues = new();
 
     public List<string> Errors = [];
 
@@ -72,6 +78,25 @@ public class Compiler
         _builder.Dispose();
         _module.Dispose();
         //_engine.Dispose();
+    }
+
+    private T Pop<T>(List<T> list)
+    {
+        if (list == null || list.Count == 0)
+            throw new InvalidOperationException("The list is empty or null.");
+
+        // Get the last element
+        T value = list[^1]; // ^1 means the last element
+        // Remove the last element
+        list.RemoveAt(list.Count - 1);
+
+        return value;
+    }
+
+    private uint IncrementCounter()
+    {
+        counter++;
+        return counter;
     }
 
     // 1 + 1;
@@ -358,26 +383,77 @@ public class Compiler
 
     private void VisitWhileStatement(WhileStatementNode node)
     {
+        ExpressionNode condition = node.Condition;
+        BlockStatementNode body = node.Body;
 
+        var (testValue, testType) = ResolveValue(condition);
+        
+        LLVMBasicBlockRef whileEntryBlock = _currentFunction.AppendBasicBlock($"while_entry_{IncrementCounter()}");
+        LLVMBasicBlockRef whileOtherwiseBlock = _currentFunction.AppendBasicBlock($"while_otherwise_{counter}");
+
+        Breakpoints.Add(whileOtherwiseBlock);
+        Continues.Add(whileEntryBlock);
+
+        _builder.BuildCondBr(testValue, whileEntryBlock, whileOtherwiseBlock);
+
+        _builder.PositionAtEnd(whileEntryBlock);
+
+        Compile(body);
+
+        var (iterationValue, iterationVType) = ResolveValue(condition);
+        _builder.BuildCondBr(iterationValue, whileEntryBlock, whileOtherwiseBlock);
+
+        _builder.PositionAtEnd(whileOtherwiseBlock);
+
+        Breakpoints.RemoveAt(Breakpoints.Count - 1);
+        Continues.RemoveAt(Continues.Count - 1);
     }
     private void VisitBreakStatement(BreakStatementNode node)
     {
-
+        _builder.BuildBr(Breakpoints[Breakpoints.Count - 1]);
     }
 
     private void VisitContinueStatement(ContinueStatementNode node)
     {
-
+        _builder.BuildBr(Continues[Continues.Count - 1]);
     }
 
     private void VisitForStatement(ForStatementNode node)
     {
+        LetStatementNode varDeclaration = node.VarDeclaration;
+        ExpressionNode condition = node.Condition;
+        AssignStatementNode action = node.Action;
+        BlockStatementNode body = node.Body;
 
+        var idCounter = IncrementCounter();
+
+        var previousEnv = _env;
+        _env = new(parent: previousEnv, name: $"for_env_{idCounter}");
+
+        LLVMBasicBlockRef forEntryBlock = _currentFunction.AppendBasicBlock($"for_entry_{idCounter}");
+        LLVMBasicBlockRef forOtherwiseBlock = _currentFunction.AppendBasicBlock($"for_otherwise_{idCounter}");
+
+        Breakpoints.Add(forOtherwiseBlock);
+        Continues.Add(forEntryBlock);
+
+        _builder.BuildBr(forEntryBlock);
+        _builder.PositionAtEnd(forEntryBlock);
+
+        Compile(body);
+        Compile(action);
+
+        var (testValue, testType) = ResolveValue(condition);
+
+        _builder.BuildCondBr(testValue, forEntryBlock, forOtherwiseBlock);
+        _builder.PositionAtEnd(forOtherwiseBlock);
+
+        Breakpoints.RemoveAt(Breakpoints.Count - 1);
+        Continues.RemoveAt(Continues.Count - 1);
     }
 
     private void VisitImportStatement(ImportStatementNode node)
     {
-
+        // TODO
     }
     #endregion
 
@@ -397,6 +473,7 @@ public class Compiler
                 "-" => (_builder.BuildSub(leftValue, rightValue), LLVMTypeRef.Int32),
                 "*" => (_builder.BuildMul(leftValue, rightValue), LLVMTypeRef.Int32),
                 "/" => (_builder.BuildSDiv(leftValue, rightValue), LLVMTypeRef.Int32),
+                "%" => (_builder.BuildSRem(leftValue, rightValue), LLVMTypeRef.Int32),
 
                 // Comparison
                 "<" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, leftValue, rightValue), LLVMTypeRef.Int1),
@@ -413,18 +490,90 @@ public class Compiler
         return (leftValue, LLVMTypeRef.Int32);
     }
 
-    /*private (LLVMValueRef, LLVMTypeRef) VisitCallExpression(CallExpressionNode node)
+    private (LLVMValueRef, LLVMTypeRef) VisitCallExpression(CallExpressionNode node)
     {
+        string name = node.FunctionName.Value;
+        List<ExpressionNode> args = node.Arguments;
 
+        List<LLVMValueRef> argValues = [];
+        List<LLVMTypeRef> argTypes = [];
+        if (args.Count > 0)
+        {
+            foreach (ExpressionNode x in args)
+            {
+                var (aVal, aType) = ResolveValue(x);
+                argValues.Add(aVal);
+                argTypes.Add(aType);
+            }
+        }
+
+        switch (name)
+        {
+            default:
+                var lookupResult = _env.Lookup(name);
+                if (lookupResult is (LLVMValueRef vPtr, LLVMTypeRef vType))
+                {
+                    return (_builder.BuildCall2(vType, vPtr, [.. argValues]), vType);
+                }
+                return (null, null); // should be unreachable
+        }
     }
 
     private (LLVMValueRef, LLVMTypeRef) VisitPrefixExpression(PrefixExpressionNode node)
     {
+        string op = node.Operator;
+        ExpressionNode rightNode = node.RightNode;
 
-    }*/
+        var (rightValue, rightType) = ResolveValue(rightNode);
+
+        LLVMTypeRef valueType = null;
+        LLVMValueRef value = null;
+        if (rightType == LLVMTypeRef.Int32)
+        {
+            valueType = LLVMTypeRef.Int32;
+            switch (op)
+            {
+                case "-":
+                    value = _builder.BuildMul(rightValue, LLVMValueRef.CreateConstInt(valueType, ulong.MaxValue, true));
+                    break;
+                case "!":
+                    value = _builder.BuildNot(rightValue);
+                    break;
+            }
+        }
+
+       return (value, valueType);
+    }
+
     private void VisitPostfixExpression(PostfixExpressionNode node)
     {
-        
+        IdentifierLiteralNode leftNode = (IdentifierLiteralNode)node.RightNode;
+        string op = node.Operator;
+
+        var result = _env.Lookup(leftNode.Value);
+        if (result == null)
+        {
+            Errors.Add($"COMPILE ERROR: Identifier {leftNode.Value} has not been declared before it was used in a PostfixExpression.");
+            return;
+        }
+
+        var (varPtr, varType) = ((LLVMValueRef, LLVMTypeRef))result;
+        LLVMValueRef origValue = _builder.BuildLoad2(varType, varPtr);
+
+        LLVMValueRef value = null;
+        switch (op)
+        {
+            case "++":
+                if (origValue.TypeOf == LLVMTypeRef.Int32)
+                    value = _builder.BuildAdd(origValue, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1));
+                break;
+            case "--":
+                if (origValue.TypeOf == LLVMTypeRef.Int32)
+                    value = _builder.BuildSub(origValue, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1));
+                break;
+        }
+
+        _builder.BuildStore(value, varPtr);
     }
     #endregion
 
