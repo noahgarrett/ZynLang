@@ -1,14 +1,8 @@
-fn outer() int {
-	fn inner() int {
-		return 69;
-	}
-
-	return inner();
-}
 
 fn main() int {
-	let i: int = 0;
-	let x: int = outer();
+	for (let i: int = 0; i < 10; i++) {
+		printf("I eat gummies %.2f times\n", 1.2698);
+	}
 
-	return i + x;
+	return 1;
 }

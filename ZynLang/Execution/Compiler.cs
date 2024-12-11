@@ -36,7 +36,7 @@ public class Compiler
         _typeMap = new()
         {
             {"int", LLVMTypeRef.Int32 },
-            {"float", LLVMTypeRef.Float },
+            {"float", LLVMTypeRef.Double },
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 8) }
@@ -52,6 +52,8 @@ public class Compiler
         LLVM.InitializeX86AsmPrinter();
 
         InitializeModule();
+
+        SetupBuiltinFunctions();
     }
 
     public void Run(ProgramNode node)
@@ -611,6 +613,20 @@ public class Compiler
             case NodeType.IntegerLiteral:
                 IntegerLiteralNode _node = (IntegerLiteralNode)node;
                 return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)_node.Value), LLVMTypeRef.Int32);
+            case NodeType.FloatLiteral:
+                FloatLiteralNode fNode = (FloatLiteralNode)node;
+                return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Double, fNode.Value), LLVMTypeRef.Double);
+            case NodeType.StringLiteral:
+                StringLiteralNode sNode = (StringLiteralNode)node;
+
+                // Properly handle escape sequences
+                string escapedValue = sNode.Value.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\\", "\\");
+
+                // Create a global constant for the string
+                LLVMValueRef stringGlobal = _builder.BuildGlobalStringPtr(escapedValue);
+
+                // Return the pointer to the string and its type (i8*)
+                return (stringGlobal, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
                 int boolConv = bNode.Value ? 1 : 0;
@@ -638,5 +654,20 @@ public class Compiler
     {
         
     }*/
+    #endregion
+
+    #region Compiler Setup
+    private void SetupBuiltinFunctions()
+    {
+        // Declare printf
+        LLVMTypeRef printfType = LLVMTypeRef.CreateFunction(
+            LLVMTypeRef.Int32,
+            new[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
+            IsVarArg: true
+        );
+
+        LLVMValueRef printfFunction = _module.AddFunction("printf", printfType);
+        _env.Define("printf", printfFunction, printfType);
+    }
     #endregion
 }
