@@ -7,7 +7,7 @@ namespace ZynLangTests.Execution.Tests;
 public class ParserTests
 {
     [TestMethod]
-    [DataRow("let a: int = 4;", NodeType.LetStatement)]
+    [DataRow("let a: int = -4;", NodeType.LetStatement)]
     [DataRow("a = 5;", NodeType.AssignStatement)]
     [DataRow("break;", NodeType.BreakStatement)]
     [DataRow("continue;", NodeType.ContinueStatement)]
