@@ -29,7 +29,8 @@ internal class Program
 
     static void Main(string[] args)
     {
-        string filePath = "C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
+        //string filePath = "C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
+        string filePath = args.Length == 1 ? args[0] : "E:\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
         string fileContent = File.ReadAllText(filePath);
 
         if (LexerDebug)
@@ -37,7 +38,6 @@ internal class Program
 
         Lexer lexer = new(fileContent);
         Parser parser = new(lexer);
-
         
         ProgramNode programNode = parser.ParseProgram();
         if (parser.Errors.Count > 0)

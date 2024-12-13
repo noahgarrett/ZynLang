@@ -26,8 +26,10 @@ public class Compiler
 
     private uint counter = 0;
 
-    private List<LLVMBasicBlockRef> Breakpoints = new();
-    private List<LLVMBasicBlockRef> Continues = new();
+    private List<LLVMBasicBlockRef> Breakpoints = [];
+    private List<LLVMBasicBlockRef> Continues = [];
+
+    private readonly Dictionary<LLVMBasicBlockRef, bool> _blockTerminators = [];
 
     public List<string> Errors = [];
 
@@ -36,7 +38,7 @@ public class Compiler
         _typeMap = new()
         {
             {"int", LLVMTypeRef.Int32 },
-            {"float", LLVMTypeRef.Float },
+            {"float", LLVMTypeRef.Double },
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 8) }
@@ -52,6 +54,8 @@ public class Compiler
         LLVM.InitializeX86AsmPrinter();
 
         InitializeModule();
+
+        SetupBuiltinFunctions();
     }
 
     public void Run(ProgramNode node)
@@ -229,6 +233,7 @@ public class Compiler
         var (value, type) = ResolveValue(rValue);
 
         _builder.BuildRet(value);
+        _blockTerminators[_builder.InsertBlock] = true;
     }
 
     private void VisitFunctionStatement(FunctionStatementNode node)
@@ -382,24 +387,39 @@ public class Compiler
         var (testValue, testType) = ResolveValue(condition);
 
         // Create the basic blocks for the 'then', 'else', and 'merge' parts
-        LLVMBasicBlockRef thenBlock = _currentFunction.AppendBasicBlock("then");
+        LLVMBasicBlockRef thenBlock = _currentFunction.AppendBasicBlock($"then_{IncrementCounter()}");
+        _blockTerminators[thenBlock] = false;
+
         LLVMBasicBlockRef elseBlock = null;
         if (alternative != null)
-             elseBlock = _currentFunction.AppendBasicBlock("else");
-        LLVMBasicBlockRef mergeBlock = _currentFunction.AppendBasicBlock("merge");
+        {
+            elseBlock = _currentFunction.AppendBasicBlock($"else_{counter}");
+            _blockTerminators[elseBlock] = false;
+        }
+        
+        LLVMBasicBlockRef mergeBlock = _currentFunction.AppendBasicBlock($"merge_{counter}");
+        _blockTerminators[mergeBlock] = false;
 
         // Create the conditional branch based on the condition
         _builder.BuildCondBr(testValue, thenBlock, alternative == null ? mergeBlock : elseBlock);
 
         _builder.PositionAtEnd(thenBlock);
         Compile(consequence);
-        //_builder.BuildBr(mergeBlock);
+        if (!_blockTerminators[thenBlock])
+        {
+            _builder.BuildBr(mergeBlock);
+            _blockTerminators[thenBlock] = true;
+        }
 
         if (alternative != null && elseBlock != null)
         {
             _builder.PositionAtEnd(elseBlock);
             Compile(alternative);
-            //_builder.BuildBr(mergeBlock);
+            if (!_blockTerminators[elseBlock])
+            {
+                _builder.BuildBr(mergeBlock);
+                _blockTerminators[elseBlock] = true;
+            }
         }
 
         _builder.PositionAtEnd(mergeBlock);
@@ -490,7 +510,7 @@ public class Compiler
         var (leftValue, leftType) = ResolveValue(node.LeftNode);
         var (rightValue, rightType) = ResolveValue(node.RightNode);
 
-        if (rightType == LLVMTypeRef.Int32 && leftType == LLVMTypeRef.Int32)
+        if (GetReturnType(rightType) == LLVMTypeRef.Int32 && GetReturnType(leftType) == LLVMTypeRef.Int32)
         {
             return op switch
             {
@@ -509,6 +529,27 @@ public class Compiler
                 "==" => (_builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, leftValue, rightValue), LLVMTypeRef.Int1),
 
                 _ => (leftValue, LLVMTypeRef.Int32),
+            };
+        }
+        else if (GetReturnType(rightType) == LLVMTypeRef.Double && GetReturnType(leftType) == LLVMTypeRef.Double)
+        {
+            return op switch
+            {
+                // Arithmetic
+                "+" => (_builder.BuildFAdd(leftValue, rightValue), LLVMTypeRef.Double),
+                "-" => (_builder.BuildFSub(leftValue, rightValue), LLVMTypeRef.Double),
+                "*" => (_builder.BuildFMul(leftValue, rightValue), LLVMTypeRef.Double),
+                "/" => (_builder.BuildFDiv(leftValue, rightValue), LLVMTypeRef.Double),
+                "%" => (_builder.BuildFRem(leftValue, rightValue), LLVMTypeRef.Double),
+
+                // Comparison
+                "<" => (_builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, leftValue, rightValue), LLVMTypeRef.Int1),
+                "<=" => (_builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLE, leftValue, rightValue), LLVMTypeRef.Int1),
+                ">" => (_builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGT, leftValue, rightValue), LLVMTypeRef.Int1),
+                ">=" => (_builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGE, leftValue, rightValue), LLVMTypeRef.Int1),
+                "==" => (_builder.BuildFCmp(LLVMRealPredicate.LLVMRealOEQ, leftValue, rightValue), LLVMTypeRef.Int1),
+
+                _ => (leftValue, LLVMTypeRef.Double),
             };
         }
 
@@ -565,6 +606,24 @@ public class Compiler
                 case "!":
                     value = _builder.BuildNot(rightValue);
                     break;
+                default:
+                    throw new Exception($"Unsupported operation '{op}' for type Double");
+            }
+        }
+        else if (rightType == LLVMTypeRef.Double)
+        {
+            valueType = LLVMTypeRef.Double;
+            switch (op)
+            {
+                case "-":
+                    value = _builder.BuildFNeg(rightValue);
+                    break;
+                case "!":
+                    LLVMValueRef zeroValue = LLVMValueRef.CreateConstReal(valueType, 0.0);
+                    value = _builder.BuildFCmp(LLVMRealPredicate.LLVMRealOEQ, rightValue, zeroValue);
+                    break;
+                default:
+                    throw new Exception($"Unsupported operation '{op}' for type Double");
             }
         }
 
@@ -611,6 +670,20 @@ public class Compiler
             case NodeType.IntegerLiteral:
                 IntegerLiteralNode _node = (IntegerLiteralNode)node;
                 return (LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)_node.Value), LLVMTypeRef.Int32);
+            case NodeType.FloatLiteral:
+                FloatLiteralNode fNode = (FloatLiteralNode)node;
+                return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Double, fNode.Value), LLVMTypeRef.Double);
+            case NodeType.StringLiteral:
+                StringLiteralNode sNode = (StringLiteralNode)node;
+
+                // Properly handle escape sequences
+                string escapedValue = sNode.Value.Replace("\\n", "\n").Replace("\\t", "\t").Replace("\\\\", "\\");
+
+                // Create a global constant for the string
+                LLVMValueRef stringGlobal = _builder.BuildGlobalStringPtr(escapedValue);
+
+                // Return the pointer to the string and its type (i8*)
+                return (stringGlobal, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
                 int boolConv = bNode.Value ? 1 : 0;
@@ -638,5 +711,20 @@ public class Compiler
     {
         
     }*/
+    #endregion
+
+    #region Compiler Setup
+    private void SetupBuiltinFunctions()
+    {
+        // Declare printf
+        LLVMTypeRef printfType = LLVMTypeRef.CreateFunction(
+            LLVMTypeRef.Int32,
+            new[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
+            IsVarArg: true
+        );
+
+        LLVMValueRef printfFunction = _module.AddFunction("printf", printfType);
+        _env.Define("print", printfFunction, printfType);
+    }
     #endregion
 }

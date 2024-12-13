@@ -1,4 +1,5 @@
-﻿using ZynLang.AST;
+﻿using LLVMSharp.Interop;
+using ZynLang.AST;
 using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
 using ZynLang.AST.Literals;
@@ -94,6 +95,7 @@ public class Parser
             TokenType.CONTINUE => ParseContinueStatement(),
             TokenType.FOR => ParseForStatement(),
             TokenType.IMPORT => ParseImportStatement(),
+            TokenType.IF => ParseIfStatement(),
             _ => ParseExpressionStatement(),
         };
     }
@@ -299,7 +301,7 @@ public class Parser
     {
         if (!ExpectPeek(TokenType.STRING))
             return null;
-        
+
         ImportStatementNode? stmt = new(CurrentToken?.Literal ?? "");
 
         if (!ExpectPeek(TokenType.SEMICOLON))
@@ -375,7 +377,7 @@ public class Parser
         return parameters;
     }
     #endregion
-    
+
     #region Expression Functions
     private ExpressionNode? ParseExpression(PrecedenceType precedence)
     {
@@ -434,7 +436,7 @@ public class Parser
     private CallExpressionNode ParseCallExpression(ExpressionNode function)
     {
         return new CallExpressionNode((IdentifierLiteralNode)function, ParseExpressionList(TokenType.RPAREN));
-    } 
+    }
 
     private List<ExpressionNode> ParseExpressionList(TokenType end)
     {
@@ -513,7 +515,7 @@ public class Parser
             TokenType.INT => ParseIntLiteral,
             TokenType.FLOAT => ParseFloatLiteral,
             TokenType.LPAREN => ParseGroupedExpression,
-            TokenType.IF => ParseIfStatement,
+            //TokenType.IF => ParseIfStatement,
             TokenType.TRUE => ParseBooleanLiteral,
             TokenType.FALSE => ParseBooleanLiteral,
             TokenType.STRING => ParseStringLiteral,
