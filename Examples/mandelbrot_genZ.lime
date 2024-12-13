@@ -1,0 +1,53 @@
+bruh in_mandelbrot(xP: float, yP: float, n: float) int {
+    lit x: float be 0.0 rn
+    lit y: float be 0.0 rn
+    lit xtemp: float be 0.0 rn
+
+    weee (n > 0.0) {
+        xtemp be (x * x) - (y * y) + xP rn
+        y be (2.0 * x * y) + yP rn
+        x be xtemp rn
+        n be n - 1.0 rn
+
+        sus x * x + y * y > 4.0 {
+            pause 0 rn
+        }
+    }
+
+    pause 1 rn
+}
+
+bruh main() int {
+    lit xmin: float be -2.0 rn
+    lit xmax: float be 1.0 rn
+    lit ymin: float be -1.5 rn
+    lit ymax: float be 1.5 rn
+    lit width: float be 80.0 rn
+    lit height: float be 40.0 rn
+    lit threshold: float be 1000.0 rn
+
+    lit dx: float be (xmax - xmin) / width rn
+    lit dy: float be (ymax - ymin) / height rn
+
+    lit y: float be ymax rn
+    lit x: float be 0.0 rn
+
+    weee (y >= ymin) {
+        x be xmin rn
+
+        weee (x < xmax) {
+            sus in_mandelbrot(x, y, threshold) == 1 {
+                print("*") rn
+            } imposter {
+                print(".") rn
+            }
+
+            x be x + dx rn
+        }
+
+        print("\n") rn
+        y be y - dy rn
+    }
+
+    pause 0 rn
+}

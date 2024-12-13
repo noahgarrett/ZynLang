@@ -1,0 +1,1 @@
+# ZynLang - A GenZ Safe Programming Language

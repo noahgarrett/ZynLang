@@ -84,6 +84,8 @@ public static class TokenHelper
     public static Dictionary<string, TokenType> AltKeywords = new()
     {
         { "lit", TokenType.LET },
+        { "rn", TokenType.SEMICOLON },
+        { "be", TokenType.EQ },
         { "bruh", TokenType.FN },
         { "pause", TokenType.RETURN },
         { "sus", TokenType.IF },
