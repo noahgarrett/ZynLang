@@ -13,7 +13,7 @@ public enum NodeType
     InfixExpression, CallExpression, PrefixExpression, PostfixExpression, DotExpression,
 
     // Literals
-    IntegerLiteral, FloatLiteral, IdentifierLiteral, BooleanLiteral, StringLiteral,
+    IntegerLiteral, FloatLiteral, IdentifierLiteral, BooleanLiteral, StringLiteral, ArrayLiteral,
 
     // Helpers
     FunctionParameter

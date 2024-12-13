@@ -155,6 +155,12 @@ public class Lexer
             case '"':
                 tok = newToken(TokenType.STRING, readString());
                 break;
+            case '[':
+                tok = newToken(TokenType.LBRACKET, $"{CurrentChar}");
+                break;
+            case ']':
+                tok = newToken(TokenType.RBRACKET, $"{CurrentChar}");
+                break;
             case '\0':
                 tok = newToken(TokenType.EOF, $"{CurrentChar}");
                 break;
@@ -268,7 +274,7 @@ public class Lexer
     private string readIdentifier()
     {
         int position = Position;
-        while (CurrentChar != '\0' && (isLetter(CurrentChar) || isDigit(CurrentChar)))
+        while (CurrentChar != '\0' && (isLetter(CurrentChar) || isDigit(CurrentChar) || CurrentChar == '[' || CurrentChar == ']'))
             readChar();
 
         return Source[position..Position];

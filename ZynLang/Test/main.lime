@@ -1,6 +1,5 @@
-from tree import add, sub, test;
-
 fn main() int {
-	print(test());
-	return add(12, 0);
+	let a: int[] = [5, 10];
+
+	return 0;
 }

@@ -37,6 +37,7 @@ public static class ParserHelper
 
         {TokenType.PLUS_PLUS, (int)PrecedenceType.INDEX },
         {TokenType.MINUS_MINUS, (int)PrecedenceType.INDEX },
+        {TokenType.LBRACKET, (int)PrecedenceType.INDEX },
     };
 
     public static readonly List<TokenType> AssignmentOperators = [TokenType.EQ, TokenType.PLUS_EQ, TokenType.MINUS_EQ, TokenType.MUL_EQ, TokenType.DIV_EQ];
@@ -573,6 +574,11 @@ public class Parser
         return new StringLiteralNode(CurrentToken?.Literal ?? string.Empty);
     }
 
+    private ArrayLiteralNode ParseArrayLiteral()
+    {
+        return new ArrayLiteralNode(elements: ParseExpressionList(TokenType.RBRACKET));
+    }
+
     private PrefixExpressionNode ParsePrefixExpression()
     {
         string op = CurrentToken?.Literal ?? string.Empty;
@@ -597,6 +603,7 @@ public class Parser
             TokenType.STRING => ParseStringLiteral,
             TokenType.MINUS => ParsePrefixExpression,
             TokenType.BANG => ParsePrefixExpression,
+            TokenType.LBRACKET => ParseArrayLiteral,
             _ => null,
         };
     }

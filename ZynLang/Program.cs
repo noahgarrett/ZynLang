@@ -7,7 +7,7 @@ namespace ZynLang;
 
 internal class Program
 {
-    public static bool LexerDebug = true;
+    public static bool LexerDebug = false;
     public static bool ParserDebug = false;
 
     static void DebugLexer(Lexer lexer)

@@ -11,7 +11,8 @@ Yes this logo is AI generated, GenZ appropriate.
 - [x] General For loops, While loops
 - [x] If/else statements
 - [x] Break/Continue/Return Statements
-- [ ] String data types, concat (+) strings
+- [x] String data types
+- [ ] Ability to concat strings with (+)
 - [ ] Classes
 - [ ] Class Inheritance
 - [ ] Arrays

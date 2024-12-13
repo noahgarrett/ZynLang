@@ -23,7 +23,7 @@ public enum TokenType
     LT, LT_EQ, GT, GT_EQ, EQ_EQ, NOT_EQ,
 
     // Symbols
-    COLON, COMMA, SEMICOLON, LPAREN, RPAREN, LBRACE, RBRACE,
+    COLON, COMMA, SEMICOLON, LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET,
 
     // Keywords
     LET, FN, RETURN, IF, ELSE, TRUE, FALSE, WHILE, BREAK, CONTINUE, FOR, 
@@ -102,7 +102,11 @@ public static class TokenHelper
         { "gib", TokenType.IMPORT },
     };
 
-    public static List<string> TypeKeywords = ["int", "float", "bool", "str", "void"];
+    public static List<string> TypeKeywords = [
+        "int", "float", "bool", "str", "void",
+
+        "int[]", "float[]", "bool[]", "str[]"
+    ];
 
     public static TokenType LookupIdent(string ident)
     {

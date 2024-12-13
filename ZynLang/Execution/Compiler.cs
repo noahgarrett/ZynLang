@@ -31,6 +31,8 @@ public class Compiler
 
     private readonly Dictionary<LLVMBasicBlockRef, bool> _blockTerminators = [];
 
+    private readonly string StandardLibraryPath = Path.Combine(AppContext.BaseDirectory, "BuiltIns", "std");
+
     public List<string> Errors = [];
 
     public Compiler()
@@ -41,7 +43,12 @@ public class Compiler
             {"float", LLVMTypeRef.Double },
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
-            {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }
+            {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
+
+            {"int[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Int32, 0) },
+            {"float[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Double, 0) },
+            {"bool[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Int1, 0) },
+            {"str[]", LLVMTypeRef.CreateArray(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0) },
         };
 
         _env = new();
@@ -202,14 +209,14 @@ public class Compiler
         ExpressionNode nodeValue = node.Value;
         string valueType = node.ValueType;
 
-        var (value, type) = ResolveValue(nodeValue);
+        var (value, type) = ResolveValue(nodeValue, valueType);
 
         // Verify the value's type matches what was indicated
-        if (GetReturnType(type) != _typeMap[valueType])
-        {
-            Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
-            return;
-        }
+        //if (GetReturnType(type) != _typeMap[valueType])
+        //{
+        //    Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
+        //    return;
+        //}
 
         if (_env.Lookup(name) == null)
         {
@@ -524,11 +531,12 @@ public class Compiler
 
     private void VisitImportFromStatement(ImportFromStatementNode node)
     {
+        string palletName = node.PalletName.Value;
         string filePath = $"pallets\\{node.PalletName.Value}.lime";
 
         // TODO: Implement using pre-parsed pallets
 
-        string fileContent = File.ReadAllText($"C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\{filePath}");
+        string fileContent = File.ReadAllText($"C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\{filePath}.lime");
 
         Lexer lexer = new(fileContent);
         Parser parser = new(lexer);
@@ -729,7 +737,7 @@ public class Compiler
     #endregion
 
     #region Helper Visit Methods
-    private (LLVMValueRef, LLVMTypeRef) ResolveValue(ExpressionNode node)
+    private (LLVMValueRef, LLVMTypeRef) ResolveValue(ExpressionNode node, string? valueType = null)
     {
         switch (node.Type())
         {
@@ -750,6 +758,11 @@ public class Compiler
 
                 // Return the pointer to the string and its type (i8*)
                 return (stringGlobal, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+            case NodeType.ArrayLiteral:
+                ArrayLiteralNode aNode = (ArrayLiteralNode)node;
+
+                LLVMTypeRef arrayType = LLVMTypeRef.CreateArray(_typeMap[valueType], (uint)aNode.Elements.Count);
+                return (_builder.BuildAlloca(arrayType), arrayType);
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
                 int boolConv = bNode.Value ? 1 : 0;
