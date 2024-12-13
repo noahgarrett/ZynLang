@@ -41,7 +41,7 @@ public class Compiler
             {"float", LLVMTypeRef.Double },
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
-            {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 8) }
+            {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }
         };
 
         _env = new();
@@ -78,7 +78,7 @@ public class Compiler
         }
         
 
-        Console.WriteLine("> {0}", resultAsInt);
+        Console.WriteLine("\n> {0}", resultAsInt);
 
         _builder.Dispose();
         _module.Dispose();
@@ -143,6 +143,9 @@ public class Compiler
                 break;
             case NodeType.ContinueStatement:
                 VisitContinueStatement((ContinueStatementNode)node);
+                break;
+            case NodeType.ImportStatement:
+                VisitImportStatement((ImportStatementNode)node);
                 break;
 
             // Expressions
@@ -499,7 +502,20 @@ public class Compiler
 
     private void VisitImportStatement(ImportStatementNode node)
     {
-        // TODO
+        string filePath = node.FilePath;
+        string fileContent = File.ReadAllText($"C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
+
+        Lexer lexer = new(fileContent);
+        Parser parser = new(lexer);
+
+        ProgramNode programNode = parser.ParseProgram();
+        if (parser.Errors.Count > 0)
+        {
+            foreach (var error in parser.Errors)
+                Console.WriteLine($"Parser Error: {error}");
+        }
+
+        VisitProgram(programNode);
     }
     #endregion
 
@@ -510,7 +526,11 @@ public class Compiler
         var (leftValue, leftType) = ResolveValue(node.LeftNode);
         var (rightValue, rightType) = ResolveValue(node.RightNode);
 
-        if (GetReturnType(rightType) == LLVMTypeRef.Int32 && GetReturnType(leftType) == LLVMTypeRef.Int32)
+        var lType = GetReturnType(leftType);
+        var rType = GetReturnType(rightType);
+
+        // Integers
+        if (rType == LLVMTypeRef.Int32 && lType == LLVMTypeRef.Int32)
         {
             return op switch
             {
@@ -531,7 +551,8 @@ public class Compiler
                 _ => (leftValue, LLVMTypeRef.Int32),
             };
         }
-        else if (GetReturnType(rightType) == LLVMTypeRef.Double && GetReturnType(leftType) == LLVMTypeRef.Double)
+        // Floats/Doubles
+        else if (rType == LLVMTypeRef.Double && lType == LLVMTypeRef.Double)
         {
             return op switch
             {
@@ -551,6 +572,11 @@ public class Compiler
 
                 _ => (leftValue, LLVMTypeRef.Double),
             };
+        }
+        // TODO: Strings
+        else if (rType.Kind == LLVMTypeKind.LLVMPointerTypeKind && lType.Kind == LLVMTypeKind.LLVMPointerTypeKind && IsStringType(rType) && IsStringType(lType))
+        {
+            Console.WriteLine("stop tryna do this dumbass shit big dog");
         }
 
         Console.WriteLine("big error in visit infix expression big dog");
@@ -726,5 +752,14 @@ public class Compiler
         LLVMValueRef printfFunction = _module.AddFunction("printf", printfType);
         _env.Define("print", printfFunction, printfType);
     }
+    #endregion
+
+    #region Private Helpers
+    /// <summary>
+    /// Checks to see if a LLVM type is a i8*
+    /// </summary>
+    /// <param name="rType"></param>
+    /// <param name="lType"></param>
+    private bool IsStringType(LLVMTypeRef type) => type.Kind == LLVMTypeKind.LLVMIntegerTypeKind && type.IntWidth == 8;
     #endregion
 }

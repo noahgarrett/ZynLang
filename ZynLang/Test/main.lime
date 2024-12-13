@@ -1,53 +1,5 @@
-fn in_mandelbrot(xP: float, yP: float, n: float) int {
-    let x: float = 0.0;
-    let y: float = 0.0;
-    let xtemp: float = 0.0;
-
-    while (n > 0.0) {
-        xtemp = (x * x) - (y * y) + xP;
-        y = (2.0 * x * y) + yP;
-        x = xtemp;
-        n = n - 1.0;
-
-        if x * x + y * y > 4.0 {
-            return 0;
-        }
-    }
-
-    return 1;
-}
+import "tree.lime";
 
 fn main() int {
-    let xmin: float = -2.0;
-    let xmax: float = 1.0;
-    let ymin: float = -1.5;
-    let ymax: float = 1.5;
-    let width: float = 80.0;
-    let height: float = 40.0;
-    let threshold: float = 1000.0;
-
-    let dx: float = (xmax - xmin) / width;
-    let dy: float = (ymax - ymin) / height;
-
-    let y: float = ymax;
-    let x: float = 0.0;
-
-    while (y >= ymin) {
-        x = xmin;
-
-        while (x < xmax) {
-            if in_mandelbrot(x, y, threshold) == 1 {
-                print("*");
-            } else {
-                print(".");
-            }
-
-            x = x + dx;
-        }
-
-        print("\n");
-        y = y - dy;
-    }
-
-    return 0;
+	return add(69, 0);
 }
