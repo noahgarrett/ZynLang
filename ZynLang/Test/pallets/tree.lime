@@ -1,3 +1,11 @@
-fn add(a: int, b: int) int {
+export fn add(a: int, b: int) int {
 	return a + b;
+}
+
+export fn sub(a: int, b: int) int {
+	return a - b;
+}
+
+export fn test() str {
+	return "works";
 }

@@ -26,7 +26,8 @@ public enum TokenType
     COLON, COMMA, SEMICOLON, LPAREN, RPAREN, LBRACE, RBRACE,
 
     // Keywords
-    LET, FN, RETURN, IF, ELSE, TRUE, FALSE, WHILE, BREAK, CONTINUE, FOR, IMPORT,
+    LET, FN, RETURN, IF, ELSE, TRUE, FALSE, WHILE, BREAK, CONTINUE, FOR, 
+    IMPORT, FROM, EXPORT,
 
     // Typing
     TYPE
@@ -79,6 +80,8 @@ public static class TokenHelper
         { "continue", TokenType.CONTINUE },
         { "for", TokenType.FOR },
         { "import", TokenType.IMPORT },
+        { "from", TokenType.FROM },
+        { "export", TokenType.EXPORT },
     };
 
     public static Dictionary<string, TokenType> AltKeywords = new()

@@ -18,7 +18,8 @@ Yes this logo is AI generated, GenZ appropriate.
 - [ ] Dictionaries
 - [ ] Switch Statments
 - [ ] Try/Catch Statements
-- [ ] Import Statements
-- [ ] Import From Statements
+- [x] Import Statements (full file) (these will be depreciated)
+- [x] Import From Statements
+- [x] Export Statements
 - [ ] Standard Library Functions
 - [ ] Create HTTP calls 

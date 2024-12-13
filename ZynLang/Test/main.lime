@@ -1,5 +1,6 @@
-import "tree.lime";
+from tree import add, sub, test;
 
 fn main() int {
-	return add(69, 0);
+	print(test());
+	return add(12, 0);
 }

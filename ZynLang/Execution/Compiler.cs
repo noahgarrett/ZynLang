@@ -147,6 +147,9 @@ public class Compiler
             case NodeType.ImportStatement:
                 VisitImportStatement((ImportStatementNode)node);
                 break;
+            case NodeType.ImportFromStatement:
+                VisitImportFromStatement((ImportFromStatementNode)node);
+                break;
 
             // Expressions
             case NodeType.InfixExpression:
@@ -503,7 +506,8 @@ public class Compiler
     private void VisitImportStatement(ImportStatementNode node)
     {
         string filePath = node.FilePath;
-        string fileContent = File.ReadAllText($"C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
+        //string fileContent = File.ReadAllText($"C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
+        string fileContent = File.ReadAllText($"C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
 
         Lexer lexer = new(fileContent);
         Parser parser = new(lexer);
@@ -516,6 +520,42 @@ public class Compiler
         }
 
         VisitProgram(programNode);
+    }
+
+    private void VisitImportFromStatement(ImportFromStatementNode node)
+    {
+        string filePath = $"pallets\\{node.PalletName.Value}.lime";
+
+        // TODO: Implement using pre-parsed pallets
+
+        string fileContent = File.ReadAllText($"C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\{filePath}");
+
+        Lexer lexer = new(fileContent);
+        Parser parser = new(lexer);
+
+        ProgramNode programNode = parser.ParseProgram();
+        if (parser.Errors.Count > 0)
+        {
+            foreach (var error in parser.Errors)
+                Console.WriteLine($"Parser Error with imported pallet - {filePath} -: {error}");
+        }
+
+        foreach (var export in programNode.Exports)
+        {
+            foreach (var ident in node.Imports)
+            {
+                if (export is FunctionStatementNode fEX)
+                {
+                    if (ident.Value == fEX.Name.Value)
+                        Compile(fEX);
+                }
+                else if (export is LetStatementNode lEX)
+                {
+                    if (ident.Value == lEX.Name.Value)
+                        Compile(lEX);
+                }
+            }
+        }
     }
     #endregion
 

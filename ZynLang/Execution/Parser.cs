@@ -54,6 +54,8 @@ public class Parser
     public Token? CurrentToken { get; set; } = null;
     public Token? PeekToken { get; set; } = null;
 
+    public List<StatementNode> Exports = [];
+
     public Parser(Lexer lexer)
     {
         ZynLexer = lexer;
@@ -76,6 +78,8 @@ public class Parser
             NextToken();
         }
 
+        program.Exports = Exports;
+
         return program;
     }
 
@@ -95,6 +99,8 @@ public class Parser
             TokenType.CONTINUE => ParseContinueStatement(),
             TokenType.FOR => ParseForStatement(),
             TokenType.IMPORT => ParseImportStatement(),
+            TokenType.FROM => ParseImportFromStatement(),
+            TokenType.EXPORT => ParseExportStatement(),
             TokenType.IF => ParseIfStatement(),
             _ => ParseExpressionStatement(),
         };
@@ -310,6 +316,56 @@ public class Parser
         return stmt;
     }
 
+    /// <summary>
+    /// from test import add, sub;
+    /// </summary>
+    /// <returns></returns>
+    private ImportFromStatementNode? ParseImportFromStatement()
+    {
+        if (!ExpectPeek(TokenType.IDENT))
+            return null;
+
+        ImportFromStatementNode stmt = new(ParseIdentifier());
+
+        if (!ExpectPeek(TokenType.IMPORT))
+            return null;
+
+        stmt.Imports = ParseImports();
+
+        if (!ExpectPeek(TokenType.SEMICOLON))
+            return null;
+
+        return stmt;
+    }
+
+    private StatementNode? ParseExportStatement()
+    {
+        if (PeekTokenIs(TokenType.FN))
+        {
+            NextToken();
+            FunctionStatementNode? fn = ParseFunctionStatement();
+            
+            if (fn != null)
+                Exports.Add(fn);
+
+            return fn;
+        }
+
+        if (PeekTokenIs(TokenType.LET))
+        {
+            NextToken();
+            LetStatementNode? let = ParseLetStatement();
+
+            if (let != null)
+                Exports.Add(let);
+
+            return let;
+        }
+
+        Console.WriteLine($"Cannot export a {PeekToken?.Type}");
+        return null;
+    }
+
     private ExpressionStatementNode ParseExpressionStatement()
     {
         ExpressionNode expr = ParseExpression(PrecedenceType.LOWEST);
@@ -322,6 +378,26 @@ public class Parser
     #endregion
 
     #region Statement Helpers
+    private List<IdentifierLiteralNode> ParseImports()
+    {
+        List<IdentifierLiteralNode> imports = [];
+
+        if (!ExpectPeek(TokenType.IDENT))
+            return [];
+
+        imports.Add(ParseIdentifier());
+
+        while (PeekTokenIs(TokenType.COMMA))
+        {
+            NextToken();
+            NextToken();
+
+            imports.Add(ParseIdentifier());
+        }
+
+        return imports;
+    }
+
     private List<FunctionParameterNode>? ParseFunctionParameters()
     {
         List<FunctionParameterNode> parameters = [];

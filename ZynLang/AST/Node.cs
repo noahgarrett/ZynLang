@@ -7,7 +7,7 @@ public enum NodeType
     // Statements
     ExpressionStatement, LetStatement, FunctionStatement, BlockStatement, ReturnStatement,
     AssignStatement, IfStatement, WhileStatement, BreakStatement, ContinueStatement, ForStatement,
-    ImportStatement,
+    ImportStatement, ImportFromStatement,
 
     // Expressions
     InfixExpression, CallExpression, PrefixExpression, PostfixExpression, DotExpression,
