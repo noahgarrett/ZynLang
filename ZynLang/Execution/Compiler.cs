@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using System;
 using System.Net.Mail;
 using System.Xml.Linq;
 using ZynLang.AST;
@@ -45,10 +46,10 @@ public class Compiler
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
 
-            {"int[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Int32, 0) },
-            {"float[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Double, 0) },
-            {"bool[]", LLVMTypeRef.CreateArray(LLVMTypeRef.Int1, 0) },
-            {"str[]", LLVMTypeRef.CreateArray(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0) },
+            {"arr_int", LLVMTypeRef.Int32 },
+            {"arr_float", LLVMTypeRef.Double },
+            {"arr_bool", LLVMTypeRef.Int1 },
+            {"arr_str", LLVMTypeRef.CreateArray(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0) },
         };
 
         _env = new();
@@ -99,6 +100,11 @@ public class Compiler
         {
             return type.ReturnType; // Extract the return type
         }
+        else if (type.Kind == LLVMTypeKind.LLVMArrayTypeKind)
+        {
+            return type.ElementType;
+        }
+
         return type; // Otherwise, it's already the return type
     }
 
@@ -168,6 +174,9 @@ public class Compiler
             case NodeType.PostfixExpression:
                 VisitPostfixExpression((PostfixExpressionNode)node);
                 break;
+            case NodeType.IndexExpression:
+                VisitIndexExpression((IndexExpressionNode)node);
+                break;
         }
     }
 
@@ -212,17 +221,23 @@ public class Compiler
         var (value, type) = ResolveValue(nodeValue, valueType);
 
         // Verify the value's type matches what was indicated
-        //if (GetReturnType(type) != _typeMap[valueType])
-        //{
-        //    Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
-        //    return;
-        //}
+        if (GetReturnType(type) != _typeMap[valueType])
+        {
+            Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
+            return;
+        }
 
         if (_env.Lookup(name) == null)
         {
-            LLVMValueRef ptr = _builder.BuildAlloca(GetReturnType(type));
-            
-            _builder.BuildStore(value, ptr);
+            LLVMValueRef ptr;
+
+            if (type.Kind == LLVMTypeKind.LLVMArrayTypeKind)
+                ptr = value;
+            else
+            {
+                ptr = _builder.BuildAlloca(GetReturnType(type));
+                _builder.BuildStore(value, ptr);
+            }
 
             _env.Define(name, ptr, type);
         }
@@ -734,6 +749,28 @@ public class Compiler
 
         _builder.BuildStore(value, varPtr);
     }
+
+    private (LLVMValueRef, LLVMTypeRef) VisitIndexExpression(IndexExpressionNode node)
+    {
+        ExpressionNode leftNode = node.LeftNode;
+        ExpressionNode indexNode = node.IndexNode;
+
+        var (leftValue, leftType) = ResolveValue(leftNode);
+        var (indexValue, indexType) = ResolveValue(indexNode);
+
+        LLVMValueRef elementPtr = _builder.BuildInBoundsGEP2(
+            leftType,
+            leftValue,
+            [
+                LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), // Base offset
+                indexValue // Index
+            ]
+        );
+
+        LLVMValueRef elementValue = _builder.BuildLoad2(leftType.ElementType, elementPtr);
+
+        return (elementValue, indexType);
+    }
     #endregion
 
     #region Helper Visit Methods
@@ -761,8 +798,33 @@ public class Compiler
             case NodeType.ArrayLiteral:
                 ArrayLiteralNode aNode = (ArrayLiteralNode)node;
 
-                LLVMTypeRef arrayType = LLVMTypeRef.CreateArray(_typeMap[valueType], (uint)aNode.Elements.Count);
-                return (_builder.BuildAlloca(arrayType), arrayType);
+                // TODO: Verify that valueType is not null
+                var elementType = _typeMap[valueType];
+                uint elementCount = (uint)aNode.Elements.Count;
+
+                LLVMTypeRef arrayType = LLVMTypeRef.CreateArray(elementType, elementCount);
+                LLVMValueRef arrayAlloc = _builder.BuildAlloca(arrayType);
+
+                for (int i = 0; i < aNode.Elements.Count; i++)
+                {
+                    (LLVMValueRef elementValue, LLVMTypeRef resolvedType) = ResolveValue(aNode.Elements[i]);
+
+                    // TODO: Verify the resolved type is the same as the arrays declared type
+
+                    LLVMValueRef elementPtr = _builder.BuildInBoundsGEP2(
+                        arrayType,
+                        arrayAlloc,
+                        [
+                            LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false),       // Offset to the start of the array
+                            LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)i, false) // Current element index
+                        ]
+                    );
+
+                    _builder.BuildStore(elementValue, elementPtr);
+                }
+
+                return (arrayAlloc, arrayType);
+
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
                 int boolConv = bNode.Value ? 1 : 0;
@@ -770,6 +832,12 @@ public class Compiler
             case NodeType.IdentifierLiteral:
                 IdentifierLiteralNode ident = (IdentifierLiteralNode)node;
                 var (ptr, type) = ((LLVMValueRef, LLVMTypeRef))_env.Lookup(ident.Value);
+
+                if (type.Kind == LLVMTypeKind.LLVMArrayTypeKind)
+                {
+                    return (ptr, type);
+                }
+
                 return (_builder.BuildLoad2(GetReturnType(type), ptr), GetReturnType(type));
 
             // Expression Values
@@ -779,6 +847,8 @@ public class Compiler
                 return VisitCallExpression((CallExpressionNode)node);
             case NodeType.PrefixExpression:
                 return VisitPrefixExpression((PrefixExpressionNode)node);
+            case NodeType.IndexExpression:
+                return VisitIndexExpression((IndexExpressionNode)node);
 
             default:
                 Console.WriteLine("RESOLVE VALUE WENT TO DEFAULT WTF DUDE");

@@ -274,7 +274,7 @@ public class Lexer
     private string readIdentifier()
     {
         int position = Position;
-        while (CurrentChar != '\0' && (isLetter(CurrentChar) || isDigit(CurrentChar) || CurrentChar == '[' || CurrentChar == ']'))
+        while (CurrentChar != '\0' && (isLetter(CurrentChar) || isDigit(CurrentChar)))
             readChar();
 
         return Source[position..Position];

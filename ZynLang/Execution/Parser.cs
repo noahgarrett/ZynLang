@@ -546,6 +546,18 @@ public class Parser
 
         return eList;
     }
+
+    private IndexExpressionNode? ParseIndexExpression(ExpressionNode left)
+    {
+        NextToken();
+
+        ExpressionNode indexExpr = ParseExpression(PrecedenceType.LOWEST);
+
+        if (!ExpectPeek(TokenType.RBRACKET))
+            return null;
+
+        return new IndexExpressionNode(left, indexExpr);
+    }
     #endregion
 
     #region Prefix Methods
@@ -627,6 +639,7 @@ public class Parser
             TokenType.LPAREN => ParseCallExpression,
             TokenType.PLUS_PLUS => ParsePostfixExpression,
             TokenType.MINUS_MINUS => ParsePostfixExpression,
+            TokenType.LBRACKET => ParseIndexExpression,
             _ => null,
         };
     }

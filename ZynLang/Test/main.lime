@@ -1,5 +1,5 @@
 fn main() int {
-	let a: int[] = [5, 10];
+	let a: arr_int = [5, 10];
 
-	return 0;
+	return a[1];
 }

@@ -10,7 +10,7 @@ public enum NodeType
     ImportStatement, ImportFromStatement,
 
     // Expressions
-    InfixExpression, CallExpression, PrefixExpression, PostfixExpression, DotExpression,
+    InfixExpression, CallExpression, PrefixExpression, PostfixExpression, DotExpression, IndexExpression,
 
     // Literals
     IntegerLiteral, FloatLiteral, IdentifierLiteral, BooleanLiteral, StringLiteral, ArrayLiteral,

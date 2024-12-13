@@ -105,7 +105,7 @@ public static class TokenHelper
     public static List<string> TypeKeywords = [
         "int", "float", "bool", "str", "void",
 
-        "int[]", "float[]", "bool[]", "str[]"
+        "arr_int", "arr_float", "arr_bool", "arr_str"
     ];
 
     public static TokenType LookupIdent(string ident)
