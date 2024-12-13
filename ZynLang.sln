@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{AF1E3A98-6DAD-4DCB-AD4C-DA7891E3A366}"
 	ProjectSection(SolutionItems) = preProject
+		arrays.lime = arrays.lime
+		arrays_genZ.lime = arrays_genZ.lime
 		mandelbrot.lime = mandelbrot.lime
 		mandelbrot_genZ.lime = mandelbrot_genZ.lime
 	EndProjectSection

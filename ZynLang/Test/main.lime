@@ -1,5 +1,7 @@
 fn main() int {
-	let a: arr_int = [5, 10];
+	let a: dict = {
+		"this": 25
+	};
 
-	return a[1];
+	return a["this"];
 }

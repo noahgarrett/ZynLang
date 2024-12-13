@@ -15,7 +15,7 @@ Yes this logo is AI generated, GenZ appropriate.
 - [ ] Ability to concat strings with (+)
 - [ ] Classes
 - [ ] Class Inheritance
-- [ ] Arrays
+- [x] Arrays 
 - [ ] Dictionaries
 - [ ] Switch Statments
 - [ ] Try/Catch Statements
@@ -23,4 +23,4 @@ Yes this logo is AI generated, GenZ appropriate.
 - [x] Import From Statements
 - [x] Export Statements
 - [ ] Standard Library Functions
-- [ ] Create HTTP calls 
+- [ ] Create HTTP calls

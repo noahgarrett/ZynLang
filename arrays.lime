@@ -1,0 +1,5 @@
+fn main() int {
+	let nums: arr_int = [69, 420];
+
+	return nums[0];
+}

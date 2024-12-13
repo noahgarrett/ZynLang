@@ -591,6 +591,35 @@ public class Parser
         return new ArrayLiteralNode(elements: ParseExpressionList(TokenType.RBRACKET));
     }
 
+    private HashLiteralNode? ParseHashLiteral()
+    {
+        Dictionary<ExpressionNode, ExpressionNode> pairs = [];
+
+        while (!PeekTokenIs(TokenType.RBRACE))
+        {
+            NextToken();
+
+            ExpressionNode key = ParseExpression(PrecedenceType.LOWEST);
+
+            if (!ExpectPeek(TokenType.COLON))
+                return null;
+
+            NextToken();
+
+            ExpressionNode value = ParseExpression(PrecedenceType.LOWEST);
+
+            pairs.Add(key, value);
+
+            if (!PeekTokenIs(TokenType.RBRACE) && !ExpectPeek(TokenType.COMMA))
+                return null;
+        }
+
+        if (!ExpectPeek(TokenType.RBRACE))
+            return null;
+
+        return new HashLiteralNode(pairs);
+    }
+
     private PrefixExpressionNode ParsePrefixExpression()
     {
         string op = CurrentToken?.Literal ?? string.Empty;
@@ -616,6 +645,7 @@ public class Parser
             TokenType.MINUS => ParsePrefixExpression,
             TokenType.BANG => ParsePrefixExpression,
             TokenType.LBRACKET => ParseArrayLiteral,
+            TokenType.LBRACE => ParseHashLiteral,
             _ => null,
         };
     }

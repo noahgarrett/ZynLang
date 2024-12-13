@@ -45,6 +45,7 @@ public class Compiler
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
+            {"dict", LLVMTypeRef.Int16 }, // TODO: make type
 
             {"arr_int", LLVMTypeRef.Int32 },
             {"arr_float", LLVMTypeRef.Double },
@@ -221,11 +222,11 @@ public class Compiler
         var (value, type) = ResolveValue(nodeValue, valueType);
 
         // Verify the value's type matches what was indicated
-        if (GetReturnType(type) != _typeMap[valueType])
-        {
-            Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
-            return;
-        }
+        //if (GetReturnType(type) != _typeMap[valueType])
+        //{
+        //    Console.WriteLine($"Compiler: Value in variable declaration ({name}) does not match type declared. Want = {valueType}, Got = {type}");
+        //    return;
+        //}
 
         if (_env.Lookup(name) == null)
         {
@@ -752,24 +753,111 @@ public class Compiler
 
     private (LLVMValueRef, LLVMTypeRef) VisitIndexExpression(IndexExpressionNode node)
     {
+        //ExpressionNode leftNode = node.LeftNode;
+        //ExpressionNode indexNode = node.IndexNode;
+
+        //var (leftValue, leftType) = ResolveValue(leftNode);
+        //var (indexValue, indexType) = ResolveValue(indexNode);
+
+        //LLVMValueRef elementPtr = _builder.BuildInBoundsGEP2(
+        //    leftType,
+        //    leftValue,
+        //    [
+        //        LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), // Base offset
+        //        indexValue // Index
+        //    ]
+        //);
+
+        //LLVMValueRef elementValue = _builder.BuildLoad2(leftType.ElementType, elementPtr);
+
+        //return (elementValue, indexType);
         ExpressionNode leftNode = node.LeftNode;
         ExpressionNode indexNode = node.IndexNode;
 
-        var (leftValue, leftType) = ResolveValue(leftNode);
+        // Resolve the container and index
+        var (containerValue, containerType) = ResolveValue(leftNode);
         var (indexValue, indexType) = ResolveValue(indexNode);
 
-        LLVMValueRef elementPtr = _builder.BuildInBoundsGEP2(
-            leftType,
-            leftValue,
-            [
+        // Check if the container is an array
+        if (containerType.Kind == LLVMTypeKind.LLVMArrayTypeKind)
+        {
+            // Handle array indexing
+            LLVMValueRef elementPtr = _builder.BuildInBoundsGEP2(
+                containerType,
+                containerValue,
+                new LLVMValueRef[]
+                {
                 LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), // Base offset
-                indexValue // Index
-            ]
-        );
+                indexValue // Integer index
+                }
+            );
 
-        LLVMValueRef elementValue = _builder.BuildLoad2(leftType.ElementType, elementPtr);
+            LLVMValueRef elementValue = _builder.BuildLoad2(containerType.ElementType, elementPtr);
+            return (elementValue, containerType.ElementType);
+        }
+        // TODO: MAKE THIS WORK
+        else if (containerType.Kind == LLVMTypeKind.LLVMPointerTypeKind /*&& containerType.ElementType.Kind == LLVMTypeKind.LLVMPointerTypeKind*/)
+        {
+            // Handle hash map indexing
+            LLVMTypeRef entryType = containerType.ElementType;
 
-        return (elementValue, indexType);
+            // Ensure hash map struct layout: { ptr, valueType }
+            LLVMTypeRef keyType = entryType.StructElementTypes[0];
+            LLVMTypeRef valueType = entryType.StructElementTypes[1];
+
+            // Start with a null/zero value
+            LLVMValueRef resultValue = LLVMValueRef.CreateConstNull(valueType);
+
+            // Iterate through the hash map
+            LLVMValueRef loopCounter = _builder.BuildAlloca(LLVMTypeRef.Int32);
+            _builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), loopCounter);
+
+            LLVMBasicBlockRef loopStart = _currentFunction.AppendBasicBlock("loop_start");
+            LLVMBasicBlockRef loopEnd = _currentFunction.AppendBasicBlock("loop_end");
+
+            _builder.BuildBr(loopStart);
+            _builder.PositionAtEnd(loopStart);
+
+            // Load the current index
+            LLVMValueRef currentIndex = _builder.BuildLoad2(LLVMTypeRef.Int32, loopCounter);
+            LLVMValueRef currentEntryPtr = _builder.BuildInBoundsGEP2(entryType, containerValue, new LLVMValueRef[] { currentIndex });
+
+            LLVMValueRef currentKeyPtr = _builder.BuildInBoundsGEP2(keyType, currentEntryPtr, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false) });
+            LLVMValueRef currentKey = _builder.BuildLoad2(keyType, currentKeyPtr);
+
+            LLVMValueRef currentValuePtr = _builder.BuildInBoundsGEP2(valueType, currentEntryPtr, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1, false) });
+
+            // Compare keys
+            LLVMValueRef keyMatch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, currentKey, indexValue);
+
+            LLVMBasicBlockRef keyMatchBlock = _currentFunction.AppendBasicBlock("key_match");
+            LLVMBasicBlockRef keyMismatchBlock = _currentFunction.AppendBasicBlock("key_mismatch");
+
+            _builder.BuildCondBr(keyMatch, keyMatchBlock, keyMismatchBlock);
+
+            // Key matches
+            _builder.PositionAtEnd(keyMatchBlock);
+            resultValue = _builder.BuildLoad2(valueType, currentValuePtr);
+            _builder.BuildBr(loopEnd);
+
+            // Key mismatch
+            _builder.PositionAtEnd(keyMismatchBlock);
+            LLVMValueRef nextIndex = _builder.BuildAdd(currentIndex, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1, false));
+            _builder.BuildStore(nextIndex, loopCounter);
+
+            // End the loop
+            LLVMValueRef condition = _builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, nextIndex,
+                LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)10, false)); // Replace `10` with hash map size
+            _builder.BuildCondBr(condition, loopStart, loopEnd);
+
+            _builder.PositionAtEnd(loopEnd);
+
+            return (resultValue, valueType);
+        }
+        else
+        {
+            throw new InvalidOperationException("Indexing is only supported for arrays and hash maps.");
+        }
     }
     #endregion
 
@@ -824,6 +912,46 @@ public class Compiler
                 }
 
                 return (arrayAlloc, arrayType);
+            case NodeType.HashLiteral:
+                HashLiteralNode hNode = (HashLiteralNode)node;
+
+                // Define the type for the hash map entry: { key (ptr), value (i32) }
+                LLVMTypeRef keyType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
+                LLVMTypeRef valueT = LLVMTypeRef.Int32;
+                LLVMTypeRef entryType = LLVMTypeRef.CreateStruct([keyType, valueT], false);
+
+                // Define the type for the hash map: pointer to array of entry pointers
+                LLVMTypeRef hashMapType = LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateArray(entryType, (uint)hNode.Pairs.Count), 0);
+
+                // Allocate memory for the hash map
+                LLVMValueRef hashMap = _builder.BuildMalloc(hashMapType);
+
+                // Initialize entries into the hash map
+                int index = 0;
+                foreach (var kvp in hNode.Pairs)
+                {
+                    ExpressionNode keyNode = kvp.Key;
+                    ExpressionNode valueNode = kvp.Value;
+
+                    // Resolve the values for these nodes
+                    var (keyValue, keyTypeResolved) = ResolveValue(keyNode);
+                    var (valueValue, valueTypeResolved) = ResolveValue(valueNode);
+
+                    // Get the pointer to the current entry
+                    LLVMValueRef entryPtr = _builder.BuildInBoundsGEP2(
+                        entryType,
+                        hashMap,
+                        [LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)index++, false)]
+                    );
+
+                    // Set the key and value in the entry
+                    LLVMValueRef keyPtr = _builder.BuildStructGEP2(entryType, entryPtr, 0);
+                    LLVMValueRef valuePtr = _builder.BuildStructGEP2(entryType, entryPtr, 1);
+                    _builder.BuildStore(keyValue, keyPtr);
+                    _builder.BuildStore(valueValue, valuePtr);
+                }
+
+                return (hashMap, hashMapType);
 
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
@@ -855,11 +983,6 @@ public class Compiler
                 return (LLVMValueRef.CreateConstReal(LLVMTypeRef.Int32, 69), LLVMTypeRef.Int32);
         }
     }
-
-    /*private (LLVMValueRef, LLVMTypeRef) ConvertString(string value)
-    {
-        
-    }*/
     #endregion
 
     #region Compiler Setup
