@@ -860,30 +860,31 @@ public class Compiler
                 return (arrayAlloc, arrayType);
             case NodeType.HashLiteral:
                 HashLiteralNode hNode = (HashLiteralNode)node;
-
+                
                 //LLVMValueRef mallocFn = _module.GetNamedFunction("malloc");
+                LLVMTypeRef mallocType = LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.Int64 }, false);
                 LLVMValueRef mallocFn = _module.AddFunction(
                     "malloc",
-                    LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.Int64 }, false)
+                    mallocType
                 );
 
                 // Allocate memory for dict
                 LLVMValueRef dictPtr = _builder.BuildCall2(
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocType,
                     mallocFn,
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 64, false) },
                     "dict_ptr"
                 );
 
                 LLVMValueRef keysArray = _builder.BuildCall2(
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocType,
                     mallocFn,
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 128, false) },
                     "keys_array"
                 );
 
                 LLVMValueRef valuesArray = _builder.BuildCall2(
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocType,
                     mallocFn,
                     new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 64, false) },
                     "values_array"
@@ -892,7 +893,7 @@ public class Compiler
                 // Store the keys in the dict
                 // TODO: allow multiple keys and values
                 LLVMValueRef keysArrayPtr = _builder.BuildStructGEP2(
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                    mallocType, // MIGHT BE ISSUE
                     dictPtr,
                     0,
                     "keys_array_ptr"
@@ -900,7 +901,7 @@ public class Compiler
                 _builder.BuildStore(keysArray, keysArrayPtr);
 
                 LLVMValueRef valuesArrayPtr = _builder.BuildStructGEP2(
-                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                    mallocType, // MIGHT BE ISSUE
                     dictPtr,
                     1,
                     "values_array_ptr"
@@ -908,7 +909,7 @@ public class Compiler
                 _builder.BuildStore(valuesArray, valuesArrayPtr);
 
                 LLVMValueRef capacityPtr = _builder.BuildStructGEP2(
-                     LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                     mallocType, // MIGHT BE ISSUE
                      dictPtr,
                      2,
                      "capacity_ptr"
@@ -921,6 +922,7 @@ public class Compiler
                     var (keyVal, keyType) = ResolveValue(kvp.Key);
                     var (valVal, valType) = ResolveValue(kvp.Value);
 
+                    Console.WriteLine(_module.PrintToString());
                     LLVMValueRef hashValue = _builder.BuildCall2(
                         LLVMTypeRef.Int32,
                         _module.GetNamedFunction("internal_hash"),
