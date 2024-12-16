@@ -922,7 +922,6 @@ public class Compiler
                     var (keyVal, keyType) = ResolveValue(kvp.Key);
                     var (valVal, valType) = ResolveValue(kvp.Value);
 
-                    Console.WriteLine(_module.PrintToString());
                     LLVMValueRef hashValue = _builder.BuildCall2(
                         LLVMTypeRef.Int32,
                         _module.GetNamedFunction("internal_hash"),
