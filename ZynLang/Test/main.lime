@@ -1,7 +1,3 @@
 fn main() int {
-	let a: dict = {
-		"this": 25
-	};
-
 	return 41;
 }

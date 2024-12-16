@@ -1,4 +1,7 @@
-﻿namespace ZynLang.AST.Statements;
+﻿using Newtonsoft.Json;
+using System.Dynamic;
+
+namespace ZynLang.AST.Statements;
 
 public class ReturnStatementNode(ExpressionNode returnValue) : StatementNode
 {
@@ -7,5 +10,14 @@ public class ReturnStatementNode(ExpressionNode returnValue) : StatementNode
     public override NodeType Type()
     {
         return NodeType.ReturnStatement;
+    }
+
+    public override string Json()
+    {
+        dynamic obj = new ExpandoObject();
+        obj.Type = Type().ToString();
+        obj.ReturnValue = ReturnValue.Json();
+
+        return JsonConvert.SerializeObject(obj, Formatting.Indented);
     }
 }

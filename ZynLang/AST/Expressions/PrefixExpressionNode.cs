@@ -5,6 +5,11 @@ public class PrefixExpressionNode(string op, ExpressionNode rightNode) : Express
     public string Operator { get; set; } = op;
     public ExpressionNode RightNode { get; set; } = rightNode;
 
+    public override string Json()
+    {
+        throw new NotImplementedException();
+    }
+
     public override NodeType Type()
     {
         return NodeType.PrefixExpression;

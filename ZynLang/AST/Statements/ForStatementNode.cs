@@ -7,6 +7,11 @@ public class ForStatementNode(LetStatementNode varDeclaration, ExpressionNode co
     public ExpressionNode Action { get; set; } = action;
     public BlockStatementNode Body { get; set; } = body;
 
+    public override string Json()
+    {
+        throw new NotImplementedException();
+    }
+
     public override NodeType Type()
     {
         return NodeType.ForStatement;

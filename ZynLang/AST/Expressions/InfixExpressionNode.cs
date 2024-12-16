@@ -6,6 +6,11 @@ public class InfixExpressionNode(ExpressionNode leftNode, string op, ExpressionN
     public string Operator { get; set; } = op;
     public ExpressionNode RightNode { get; set; } = rightNode;
 
+    public override string Json()
+    {
+        throw new NotImplementedException();
+    }
+
     public override NodeType Type()
     {
         return NodeType.InfixExpression;

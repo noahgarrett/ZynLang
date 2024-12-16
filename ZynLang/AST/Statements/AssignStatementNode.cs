@@ -8,6 +8,11 @@ public class AssignStatementNode(IdentifierLiteralNode identifier, string op, Ex
     public string Operator { get; set; } = op;
     public ExpressionNode RightValue { get; set; } = rightValue;
 
+    public override string Json()
+    {
+        throw new NotImplementedException();
+    }
+
     public override NodeType Type()
     {
         return NodeType.AssignStatement;
