@@ -45,7 +45,11 @@ public class Compiler
             {"bool", LLVMTypeRef.Int1 },
             {"void", LLVMTypeRef.Void },
             {"str", LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) },
-            {"dict", LLVMTypeRef.Int16 }, // TODO: make type
+            {"dict", LLVMTypeRef.CreateStruct([
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0),
+                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0),
+                LLVMTypeRef.Int32
+            ], false) },    // TODO: Allow values other than integers
 
             {"arr_int", LLVMTypeRef.Int32 },
             {"arr_float", LLVMTypeRef.Double },
@@ -64,7 +68,9 @@ public class Compiler
 
         InitializeModule();
 
-        SetupBuiltinFunctions();
+        SetupBuiltinFunctions();    // Functions pre-built for users
+
+        SetupInternalFunctions();   // Functions used internally for compiler
     }
 
     public void Run(ProgramNode node)
@@ -795,69 +801,9 @@ public class Compiler
             LLVMValueRef elementValue = _builder.BuildLoad2(containerType.ElementType, elementPtr);
             return (elementValue, containerType.ElementType);
         }
-        // TODO: MAKE THIS WORK
-        else if (containerType.Kind == LLVMTypeKind.LLVMPointerTypeKind /*&& containerType.ElementType.Kind == LLVMTypeKind.LLVMPointerTypeKind*/)
-        {
-            // Handle hash map indexing
-            LLVMTypeRef entryType = containerType.ElementType;
 
-            // Ensure hash map struct layout: { ptr, valueType }
-            LLVMTypeRef keyType = entryType.StructElementTypes[0];
-            LLVMTypeRef valueType = entryType.StructElementTypes[1];
-
-            // Start with a null/zero value
-            LLVMValueRef resultValue = LLVMValueRef.CreateConstNull(valueType);
-
-            // Iterate through the hash map
-            LLVMValueRef loopCounter = _builder.BuildAlloca(LLVMTypeRef.Int32);
-            _builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false), loopCounter);
-
-            LLVMBasicBlockRef loopStart = _currentFunction.AppendBasicBlock("loop_start");
-            LLVMBasicBlockRef loopEnd = _currentFunction.AppendBasicBlock("loop_end");
-
-            _builder.BuildBr(loopStart);
-            _builder.PositionAtEnd(loopStart);
-
-            // Load the current index
-            LLVMValueRef currentIndex = _builder.BuildLoad2(LLVMTypeRef.Int32, loopCounter);
-            LLVMValueRef currentEntryPtr = _builder.BuildInBoundsGEP2(entryType, containerValue, new LLVMValueRef[] { currentIndex });
-
-            LLVMValueRef currentKeyPtr = _builder.BuildInBoundsGEP2(keyType, currentEntryPtr, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false) });
-            LLVMValueRef currentKey = _builder.BuildLoad2(keyType, currentKeyPtr);
-
-            LLVMValueRef currentValuePtr = _builder.BuildInBoundsGEP2(valueType, currentEntryPtr, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1, false) });
-
-            // Compare keys
-            LLVMValueRef keyMatch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, currentKey, indexValue);
-
-            LLVMBasicBlockRef keyMatchBlock = _currentFunction.AppendBasicBlock("key_match");
-            LLVMBasicBlockRef keyMismatchBlock = _currentFunction.AppendBasicBlock("key_mismatch");
-
-            _builder.BuildCondBr(keyMatch, keyMatchBlock, keyMismatchBlock);
-
-            // Key matches
-            _builder.PositionAtEnd(keyMatchBlock);
-            resultValue = _builder.BuildLoad2(valueType, currentValuePtr);
-            _builder.BuildBr(loopEnd);
-
-            // Key mismatch
-            _builder.PositionAtEnd(keyMismatchBlock);
-            LLVMValueRef nextIndex = _builder.BuildAdd(currentIndex, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1, false));
-            _builder.BuildStore(nextIndex, loopCounter);
-
-            // End the loop
-            LLVMValueRef condition = _builder.BuildICmp(LLVMIntPredicate.LLVMIntULT, nextIndex,
-                LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)10, false)); // Replace `10` with hash map size
-            _builder.BuildCondBr(condition, loopStart, loopEnd);
-
-            _builder.PositionAtEnd(loopEnd);
-
-            return (resultValue, valueType);
-        }
-        else
-        {
-            throw new InvalidOperationException("Indexing is only supported for arrays and hash maps.");
-        }
+        Console.WriteLine("=== INDEX FUNCTION WAS NOT ARRAY ===");
+        return (null, null);
     }
     #endregion
 
@@ -915,43 +861,125 @@ public class Compiler
             case NodeType.HashLiteral:
                 HashLiteralNode hNode = (HashLiteralNode)node;
 
-                // Define the type for the hash map entry: { key (ptr), value (i32) }
-                LLVMTypeRef keyType = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
-                LLVMTypeRef valueT = LLVMTypeRef.Int32;
-                LLVMTypeRef entryType = LLVMTypeRef.CreateStruct([keyType, valueT], false);
+                //LLVMValueRef mallocFn = _module.GetNamedFunction("malloc");
+                LLVMValueRef mallocFn = _module.AddFunction(
+                    "malloc",
+                    LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.Int64 }, false)
+                );
 
-                // Define the type for the hash map: pointer to array of entry pointers
-                LLVMTypeRef hashMapType = LLVMTypeRef.CreatePointer(LLVMTypeRef.CreateArray(entryType, (uint)hNode.Pairs.Count), 0);
+                // Allocate memory for dict
+                LLVMValueRef dictPtr = _builder.BuildCall2(
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocFn,
+                    new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 64, false) },
+                    "dict_ptr"
+                );
 
-                // Allocate memory for the hash map
-                LLVMValueRef hashMap = _builder.BuildMalloc(hashMapType);
+                LLVMValueRef keysArray = _builder.BuildCall2(
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocFn,
+                    new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 128, false) },
+                    "keys_array"
+                );
 
-                // Initialize entries into the hash map
-                int index = 0;
+                LLVMValueRef valuesArray = _builder.BuildCall2(
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                    mallocFn,
+                    new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int64, 64, false) },
+                    "values_array"
+                );
+
+                // Store the keys in the dict
+                // TODO: allow multiple keys and values
+                LLVMValueRef keysArrayPtr = _builder.BuildStructGEP2(
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                    dictPtr,
+                    0,
+                    "keys_array_ptr"
+                );
+                _builder.BuildStore(keysArray, keysArrayPtr);
+
+                LLVMValueRef valuesArrayPtr = _builder.BuildStructGEP2(
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                    dictPtr,
+                    1,
+                    "values_array_ptr"
+                );
+                _builder.BuildStore(valuesArray, valuesArrayPtr);
+
+                LLVMValueRef capacityPtr = _builder.BuildStructGEP2(
+                     LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), // MIGHT BE ISSUE
+                     dictPtr,
+                     2,
+                     "capacity_ptr"
+                );
+                _builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 16, false), capacityPtr);
+
+                // Insert key-value pair
                 foreach (var kvp in hNode.Pairs)
                 {
-                    ExpressionNode keyNode = kvp.Key;
-                    ExpressionNode valueNode = kvp.Value;
+                    var (keyVal, keyType) = ResolveValue(kvp.Key);
+                    var (valVal, valType) = ResolveValue(kvp.Value);
 
-                    // Resolve the values for these nodes
-                    var (keyValue, keyTypeResolved) = ResolveValue(keyNode);
-                    var (valueValue, valueTypeResolved) = ResolveValue(valueNode);
-
-                    // Get the pointer to the current entry
-                    LLVMValueRef entryPtr = _builder.BuildInBoundsGEP2(
-                        entryType,
-                        hashMap,
-                        [LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)index++, false)]
+                    LLVMValueRef hashValue = _builder.BuildCall2(
+                        LLVMTypeRef.Int32,
+                        _module.GetNamedFunction("internal_hash"),
+                        new LLVMValueRef[] { keyVal },
+                        "hash_value"
                     );
 
-                    // Set the key and value in the entry
-                    LLVMValueRef keyPtr = _builder.BuildStructGEP2(entryType, entryPtr, 0);
-                    LLVMValueRef valuePtr = _builder.BuildStructGEP2(entryType, entryPtr, 1);
-                    _builder.BuildStore(keyValue, keyPtr);
-                    _builder.BuildStore(valueValue, valuePtr);
+                    LLVMValueRef capacity = _builder.BuildLoad2(LLVMTypeRef.Int32, capacityPtr, "capacity");
+                    LLVMValueRef index = _builder.BuildURem(hashValue, capacity, "index");
+
+                    // Store key in keys array
+                    LLVMValueRef keySlot = _builder.BuildGEP2(
+                        LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                        keysArray,
+                        new LLVMValueRef[] { index },
+                        "key_slot"
+                    );
+                    _builder.BuildStore(keyVal, keySlot);
+
+                    // Store value in values array
+                    LLVMValueRef valueSlot = _builder.BuildGEP2(
+                        LLVMTypeRef.Int32,
+                        valuesArray,
+                        new LLVMValueRef[] { index },
+                        "value_slot"
+                    );
+                    _builder.BuildStore(valVal, valueSlot);
+
+                    break; // TODO: make sure this works with multiple key value pairs
                 }
 
-                return (hashMap, hashMapType);
+                return (dictPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+
+            //// Initialize entries into the hash map
+            //int index = 0;
+            //foreach (var kvp in hNode.Pairs)
+            //{
+            //    ExpressionNode keyNode = kvp.Key;
+            //    ExpressionNode valueNode = kvp.Value;
+
+            //    // Resolve the values for these nodes
+            //    var (keyValue, keyTypeResolved) = ResolveValue(keyNode);
+            //    var (valueValue, valueTypeResolved) = ResolveValue(valueNode);
+
+            //    // Get the pointer to the current entry
+            //    LLVMValueRef entryPtr = _builder.BuildInBoundsGEP2(
+            //        entryType,
+            //        hashMap,
+            //        [LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)index++, false)]
+            //    );
+
+            //    // Set the key and value in the entry
+            //    LLVMValueRef keyPtr = _builder.BuildStructGEP2(entryType, entryPtr, 0);
+            //    LLVMValueRef valuePtr = _builder.BuildStructGEP2(entryType, entryPtr, 1);
+            //    _builder.BuildStore(keyValue, keyPtr);
+            //    _builder.BuildStore(valueValue, valuePtr);
+            //}
+
+            //return (hashMap, hashMapType);
 
             case NodeType.BooleanLiteral:
                 BooleanLiteralNode bNode = (BooleanLiteralNode)node;
@@ -997,6 +1025,93 @@ public class Compiler
 
         LLVMValueRef printfFunction = _module.AddFunction("printf", printfType);
         _env.Define("print", printfFunction, printfType);
+    }
+
+    private void SetupInternalFunctions()
+    {
+        // Hash function
+        SetupInternalHashFunction();
+
+        // Malloc 64-bit
+        //LLVMTypeRef mallocType = LLVMTypeRef.CreateFunction(
+        //    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+        //    [LLVMTypeRef.Int64],
+        //    false
+        //);
+        //_module.AddFunction("malloc", mallocType);
+    }
+
+    private void SetupInternalHashFunction()
+    {
+        LLVMTypeRef hashFuncType = LLVMTypeRef.CreateFunction(
+            LLVMTypeRef.Int32,
+            [LLVMTypeRef.CreatePointer(LLVMTypeRef.Int32, 0)],
+            false
+        );
+
+        LLVMValueRef hashFunc = _module.AddFunction("internal_hash", hashFuncType);
+
+        LLVMBasicBlockRef entryBlock = hashFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(entryBlock);
+
+        // Initialize hash
+        LLVMValueRef hash = _builder.BuildAlloca(LLVMTypeRef.Int32, "hash");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 5381, false), hash);
+        LLVMValueRef ptr = hashFunc.GetParam(0); // Input string pointer
+
+        // Jump to the loop block
+        LLVMBasicBlockRef loopBlock = hashFunc.AppendBasicBlock("hash_loop");
+        _builder.BuildBr(loopBlock);
+
+        // Loop block
+        _builder.PositionAtEnd(loopBlock);
+        LLVMValueRef currentChar = _builder.BuildLoad2(
+            LLVMTypeRef.Int8,
+            _builder.BuildGEP2(LLVMTypeRef.Int8, ptr, new LLVMValueRef[] {
+        LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 0, false)
+            }, "char_ptr"),
+            "current_char"
+        );
+
+        // Check if the character is null (end of string)
+        LLVMValueRef isNull = _builder.BuildICmp(
+            LLVMIntPredicate.LLVMIntEQ,
+            currentChar,
+            LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 0, false),
+            "is_null"
+        );
+
+        LLVMBasicBlockRef endBlock = hashFunc.AppendBasicBlock("hash_end");
+        LLVMBasicBlockRef bodyBlock = hashFunc.AppendBasicBlock("hash_body");
+
+        // Conditional branch based on null check
+        _builder.BuildCondBr(isNull, endBlock, bodyBlock);
+
+        // Body block (process character and update hash)
+        _builder.PositionAtEnd(bodyBlock);
+        LLVMValueRef hashValue = _builder.BuildLoad2(LLVMTypeRef.Int32, hash, "current_hash");
+        LLVMValueRef hashUpdated = _builder.BuildAdd(
+            _builder.BuildMul(hashValue, LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 33, false), "hash_mul"),
+            _builder.BuildZExt(currentChar, LLVMTypeRef.Int32, "hash_char_ext"),
+            "new_hash"
+        );
+        _builder.BuildStore(hashUpdated, hash);
+
+        // Advance pointer to the next character
+        ptr = _builder.BuildGEP2(
+            LLVMTypeRef.Int8,
+            ptr,
+            new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, 1, false) },
+            "next_char"
+        );
+
+        // Loop back
+        _builder.BuildBr(loopBlock);
+
+        // End block (return final hash)
+        _builder.PositionAtEnd(endBlock);
+        LLVMValueRef finalHash = _builder.BuildLoad2(LLVMTypeRef.Int32, hash, "final_hash");
+        _builder.BuildRet(finalHash);
     }
     #endregion
 

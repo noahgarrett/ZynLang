@@ -3,5 +3,5 @@ fn main() int {
 		"this": 25
 	};
 
-	return a["this"];
+	return 41;
 }

@@ -12,15 +12,42 @@ Yes this logo is AI generated, GenZ appropriate.
 - [x] If/else statements
 - [x] Break/Continue/Return Statements
 - [x] String data types
-- [ ] Ability to concat strings with (+)
+	- [ ] Ability to concat strings with (+)
 - [ ] Classes
-- [ ] Class Inheritance
-- [x] Arrays 
+	- [ ] Inheritance
+	- [ ] Public/Private Methods
+	- [ ] Public/Private Properties
+- [ ] Arrays
+	- [x] Creating / storing arrays
+	- [ ] Getting lengths of arrays
+	- [ ] Concating arrays (+)
+	- [x] Indexing arrays
+	- [ ] Modifying array values at index
+	- [ ] Printing contents
 - [ ] Dictionaries
+	- [x] Creating / storing dictionaries
+	- [ ] Indexing
+	- [ ] Modifying key's value
+	- [ ] Printing contents
 - [ ] Switch Statments
 - [ ] Try/Catch Statements
 - [x] Import Statements (full file) (these will be depreciated)
-- [x] Import From Statements
+- [ ] Import From Statements
+	- [x] Importing specific functions from a specific file
+	- [ ] Dot notation for navigating modules/pallets/folders
+	- [ ] As statements to rename an imported reference
 - [x] Export Statements
 - [ ] Standard Library Functions
-- [ ] Create HTTP calls
+	- [ ] Math Functions
+	- [ ] HTTP Functions
+		- [ ] GET
+		- [ ] POST
+		- [ ] PUT
+		- [ ] PATCH
+		- [ ] DELETE
+	- [ ] IO Functions
+		- [ ] Read file to string
+		- [ ] Save file
+		- [ ] Delete file
+		- [ ] Update file
+- [ ] Async Functionality
