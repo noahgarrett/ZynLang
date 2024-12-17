@@ -4,9 +4,15 @@ public class StringLiteralNode(string value) : ExpressionNode
 {
     public string Value { get; set; } = value;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Value", Value },
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

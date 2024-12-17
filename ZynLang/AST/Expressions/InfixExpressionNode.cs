@@ -6,9 +6,17 @@ public class InfixExpressionNode(ExpressionNode leftNode, string op, ExpressionN
     public string Operator { get; set; } = op;
     public ExpressionNode RightNode { get; set; } = rightNode;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "LeftNode", LeftNode.Json() },
+            { "Operator", Operator },
+            { "RightNode", RightNode.Json() },
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

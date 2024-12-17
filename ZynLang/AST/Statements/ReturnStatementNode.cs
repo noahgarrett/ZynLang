@@ -12,12 +12,14 @@ public class ReturnStatementNode(ExpressionNode returnValue) : StatementNode
         return NodeType.ReturnStatement;
     }
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        dynamic obj = new ExpandoObject();
-        obj.Type = Type().ToString();
-        obj.ReturnValue = ReturnValue.Json();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "ReturnValue", ReturnValue.Json() }
+        };
 
-        return JsonConvert.SerializeObject(obj, Formatting.Indented);
+        return obj;
     }
 }

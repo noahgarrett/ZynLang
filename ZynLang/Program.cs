@@ -1,5 +1,7 @@
-﻿using System.Diagnostics.Metrics;
+﻿using Newtonsoft.Json;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ZynLang.AST;
 using ZynLang.Execution;
 using ZynLang.Models;
@@ -49,7 +51,8 @@ internal class Program
 
         if (ParserDebug)
         {
-            File.WriteAllText("E:\\Github\\ZynLang\\ZynLang\\Test\\parser.json", programNode.Json());
+            var json = programNode.Json();
+            File.WriteAllText("E:\\Github\\ZynLang\\ZynLang\\Test\\parser.json", JsonConvert.SerializeObject(json, Formatting.Indented));
             return;
         }
 

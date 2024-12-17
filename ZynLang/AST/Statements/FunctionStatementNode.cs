@@ -17,17 +17,17 @@ public class FunctionStatementNode(List<FunctionParameterNode> parameters, Block
         return NodeType.FunctionStatement;
     }
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        dynamic obj = new ExpandoObject();
-        obj.Type = Type().ToString();
-        obj.Parameters = new List<string>();
-        obj.Name = "testing func";
-        obj.ReturnType = ReturnType;
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Name", Name.Json() },
+            { "ReturnType", ReturnType },
+            { "Parameters", Parameters.ConvertAll(param => param.Json()) },
+            { "Body", Body.Json() }
+        };
 
-        foreach (StatementNode stmt in Body.Statements)
-            obj.Statements.Add(stmt.Json());
-
-        return JsonConvert.SerializeObject(obj, Formatting.Indented);
+        return obj;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Dynamic;
+using System.Text.Json.Nodes;
 using Newtonsoft.Json;
 
 namespace ZynLang.AST;
@@ -8,20 +9,16 @@ public class ProgramNode : Node
     public List<StatementNode> Statements { get; set; } = [];
     public List<StatementNode> Exports { get; set; } = [];
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        dynamic obj = new ExpandoObject();
-        obj.Type = Type().ToString();
-        obj.Statements = new List<string>();
-        obj.Exports = new List<string>();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Statements", Statements.ConvertAll(stmt => stmt.Json()) },
+            { "Exports", Exports.ConvertAll(export => export.Json()) }
+        };
 
-        foreach (StatementNode stmt in Statements)
-            obj.Statements.Add(stmt.Json());
-
-        foreach (StatementNode export in Exports)
-            obj.Exports.Add(export.Json());
-
-        return JsonConvert.SerializeObject(obj, Formatting.Indented);
+        return obj;
     }
 
     public override NodeType Type()

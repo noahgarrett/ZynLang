@@ -23,7 +23,7 @@ public abstract class Node
 {
     public abstract NodeType Type();
 
-    public abstract string Json();
+    public abstract Dictionary<string, object> Json();
 }
 
 public abstract class StatementNode : Node { }

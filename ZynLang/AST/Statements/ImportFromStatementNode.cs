@@ -11,6 +11,18 @@ public class ImportFromStatementNode(IdentifierLiteralNode palletName) : Stateme
     public IdentifierLiteralNode PalletName { get; set; } = palletName;
     public List<IdentifierLiteralNode> Imports { get; set; } = [];
 
+    public override Dictionary<string, object> Json()
+    {
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "PalletName", PalletName.Json() },
+            { "Imports", Imports.ConvertAll(import => import.Json()) },
+        };
+
+        return obj;
+    }
+
     public override NodeType Type()
     {
         return NodeType.ImportFromStatement;

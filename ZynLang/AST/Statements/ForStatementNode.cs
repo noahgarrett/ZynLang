@@ -7,9 +7,18 @@ public class ForStatementNode(LetStatementNode varDeclaration, ExpressionNode co
     public ExpressionNode Action { get; set; } = action;
     public BlockStatementNode Body { get; set; } = body;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "VarDeclaration", VarDeclaration.Json() },
+            { "Condition", Condition.Json() },
+            { "Action", Action.Json() },
+            { "body", Body.Json() },
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

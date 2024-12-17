@@ -10,6 +10,19 @@ public class LetStatementNode(IdentifierLiteralNode name, ExpressionNode value, 
 
     public string ValueType { get; set; } = valueType;
 
+    public override Dictionary<string, object> Json()
+    {
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Name", Name.Json() },
+            { "Value", Value.Json() },
+            { "ValueType", ValueType }
+        };
+
+        return obj;
+    }
+
     public override NodeType Type()
     {
         return NodeType.LetStatement;

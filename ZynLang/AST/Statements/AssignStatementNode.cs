@@ -8,9 +8,17 @@ public class AssignStatementNode(IdentifierLiteralNode identifier, string op, Ex
     public string Operator { get; set; } = op;
     public ExpressionNode RightValue { get; set; } = rightValue;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Identifier", Identifier.Json() },
+            { "Operator", Operator },
+            { "RightValue", RightValue.Json() }
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

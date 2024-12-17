@@ -4,9 +4,15 @@ public class ExpressionStatementNode(ExpressionNode expr) : StatementNode
 {
     public ExpressionNode Expression { get; set; } = expr;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Expression", Expression.Json() }
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

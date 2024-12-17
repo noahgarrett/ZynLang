@@ -1,12 +1,21 @@
-﻿namespace ZynLang.AST.Statements;
+﻿using Newtonsoft.Json;
+using System.Dynamic;
+
+namespace ZynLang.AST.Statements;
 
 public class BlockStatementNode(List<StatementNode> statements) : StatementNode
 {
     public List<StatementNode> Statements { get; set; } = statements;
 
-    public override string Json()
+    public override Dictionary<string, object> Json()
     {
-        throw new NotImplementedException();
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "Statements", Statements.ConvertAll(stmt => stmt.Json()) }
+        };
+
+        return obj;
     }
 
     public override NodeType Type()

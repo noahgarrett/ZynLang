@@ -9,6 +9,17 @@ public class ImportStatementNode(string filePath) : StatementNode
 {
     public string FilePath { get; set; } = filePath;
 
+    public override Dictionary<string, object> Json()
+    {
+        Dictionary<string, object> obj = new()
+        {
+            { "Type", Type().ToString() },
+            { "FilePath", FilePath }
+        };
+
+        return obj;
+    }
+
     public override NodeType Type()
     {
         return NodeType.ImportStatement;

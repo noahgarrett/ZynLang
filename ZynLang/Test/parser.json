@@ -1,7 +1,107 @@
 {
   "Type": "Program",
   "Statements": [
-    "N/A"
+    {
+      "Type": "FunctionStatement",
+      "Name": {
+        "Type": "IdentifierLiteral",
+        "Value": "main"
+      },
+      "ReturnType": "int",
+      "Parameters": [],
+      "Body": {
+        "Type": "BlockStatement",
+        "Statements": [
+          {
+            "Type": "LetStatement",
+            "Name": {
+              "Type": "IdentifierLiteral",
+              "Value": "a"
+            },
+            "Value": {
+              "Type": "IntegerLiteral",
+              "Value": 10
+            },
+            "ValueType": "int"
+          },
+          {
+            "Type": "ForStatement",
+            "VarDeclaration": {
+              "Type": "LetStatement",
+              "Name": {
+                "Type": "IdentifierLiteral",
+                "Value": "i"
+              },
+              "Value": {
+                "Type": "IntegerLiteral",
+                "Value": 0
+              },
+              "ValueType": "int"
+            },
+            "Condition": {
+              "Type": "InfixExpression",
+              "LeftNode": {
+                "Type": "IdentifierLiteral",
+                "Value": "i"
+              },
+              "Operator": "<",
+              "RightNode": {
+                "Type": "IntegerLiteral",
+                "Value": 10
+              }
+            },
+            "Action": {
+              "Type": "PostfixExpression",
+              "Operator": "++",
+              "RightNode": {
+                "Type": "IdentifierLiteral",
+                "Value": "i"
+              }
+            },
+            "body": {
+              "Type": "BlockStatement",
+              "Statements": [
+                {
+                  "Type": "ExpressionStatement",
+                  "Expression": {
+                    "Type": "CallExpression",
+                    "FunctionName": {
+                      "Type": "IdentifierLiteral",
+                      "Value": "print"
+                    },
+                    "Arguments": [
+                      {
+                        "Type": "StringLiteral",
+                        "Value": "gay boi: %d"
+                      },
+                      {
+                        "Type": "IdentifierLiteral",
+                        "Value": "i"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "Type": "ReturnStatement",
+            "ReturnValue": {
+              "Type": "InfixExpression",
+              "LeftNode": {
+                "Type": "IdentifierLiteral",
+                "Value": "a"
+              },
+              "Operator": "-",
+              "RightNode": {
+                "Type": "IntegerLiteral",
+                "Value": 2
+              }
+            }
+          }
+        ]
+      }
+    }
   ],
   "Exports": []
 }
