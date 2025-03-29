@@ -3,7 +3,7 @@ ZynLang is a modern, general-purpose programming language designed to resonate w
 
 Yes this logo is AI generated, GenZ appropriate.
 
-![ZynLang Logo](https://github.com/user-attachments/assets/c745b6a9-a21b-434c-be67-25f2a582f045)
+![ZynLang Logo](https://github.com/user-attachments/assets/57e9b119-f26b-4593-b282-a52cfa044b8b)
 
 ## Beta Release TODO
 - [x] Arithmetic operations for integers and floats (doubles)
