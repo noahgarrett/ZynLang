@@ -2,7 +2,7 @@ fn main() int {
 	let a: int = 10;
 
 	for (let i: int = 0; i < 10; i++) {
-		print("gay boi: %d", i);
+		print("ay boi: %d", i);
 	}
 
 	return a + 2;
