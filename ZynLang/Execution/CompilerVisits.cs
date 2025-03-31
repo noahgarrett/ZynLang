@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using System.Runtime.InteropServices;
 using ZynLang.AST;
 using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
@@ -339,6 +340,24 @@ public partial class Compiler
     private void VisitImportStatement(ImportStatementNode node)
     {
         string filePath = node.FilePath;
+
+        switch (filePath)
+        {
+            case "std":
+                // TEMP: Link STD Module
+                string stdPath = "C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\BuiltIns\\std\\math.ll";
+
+                // Load the std module
+                LLVMModuleRef stdModule = LoadModule(stdPath);
+                bool linkResult = LinkModules(_module, stdModule);
+                if (!linkResult)
+                {
+                    throw new Exception("Error linking modules");
+                }
+
+                return;
+        }
+
         //string fileContent = File.ReadAllText($"C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
         string fileContent = File.ReadAllText($"C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\pallets\\{filePath}");
 
@@ -471,6 +490,22 @@ public partial class Compiler
                 var (aVal, aType) = ResolveValue(x);
                 argValues.Add(aVal);
                 argTypes.Add(aType);
+            }
+        }
+
+        var existingFunction = _module.GetNamedFunction(name);
+
+        if (existingFunction.Handle != IntPtr.Zero)
+        {
+            if (args.Count != existingFunction.ParamsCount)
+            {
+                throw new Exception($"Incorrect number of arguments passed. Want: {existingFunction.ParamsCount} | Got: {args.Count}");
+            }
+
+            unsafe
+            {
+                LLVMTypeRef funcType = LLVM.TypeOf(existingFunction);
+                return (_builder.BuildCall2(funcType, existingFunction, [.. argValues]), funcType);
             }
         }
 

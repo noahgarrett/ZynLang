@@ -10,7 +10,7 @@ namespace ZynLang;
 internal class Program
 {
     public static bool LexerDebug = false;
-    public static bool ParserDebug = true;
+    public static bool ParserDebug = false;
 
     static void DebugLexer(Lexer lexer)
     {
@@ -32,8 +32,8 @@ internal class Program
     static void Main(string[] args)
     {
         //string filePath = "C:\\Users\\noahw\\OneDrive\\Desktop\\Blank Software, LLC\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
-        string filePath = args.Length == 1 ? args[0] : "E:\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
-        //string filePath = "C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\main.lime";
+        //string filePath = args.Length == 1 ? args[0] : "E:\\Github\\ZynLang\\ZynLang\\Test\\main.lime";
+        string filePath = "C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\main.lime";
         string fileContent = File.ReadAllText(filePath);
 
         if (LexerDebug)
@@ -52,7 +52,7 @@ internal class Program
         if (ParserDebug)
         {
             var json = programNode.Json();
-            File.WriteAllText("E:\\Github\\ZynLang\\ZynLang\\Test\\parser.json", JsonConvert.SerializeObject(json, Formatting.Indented));
+            File.WriteAllText("C:\\Users\\ngarrett\\Documents\\Other\\ZynLang\\ZynLang\\Test\\parser.json", JsonConvert.SerializeObject(json, Formatting.Indented));
             return;
         }
 

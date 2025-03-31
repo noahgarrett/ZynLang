@@ -21,10 +21,4 @@
     <Folder Include="BuiltIns\std" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="BuiltIns\std\math.lime">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

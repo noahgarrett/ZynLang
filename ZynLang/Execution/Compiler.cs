@@ -1,4 +1,5 @@
 ﻿using LLVMSharp.Interop;
+using System.Runtime.InteropServices;
 using ZynLang.AST;
 using ZynLang.AST.Expressions;
 using ZynLang.AST.Helpers;
@@ -67,7 +68,7 @@ public partial class Compiler
 
         SetupBuiltinFunctions();    // Functions pre-built for users
 
-        SetupInternalFunctions();   // Functions used internally for compiler
+        //SetupInternalFunctions();   // Functions used internally for compiler
     }
 
     public void Run(ProgramNode node)
@@ -200,6 +201,46 @@ public partial class Compiler
         _passManager.InitializeFunctionPassManager();*/
 
         _engine = _module.CreateMCJITCompiler();
+    }
+
+    private static unsafe LLVMModuleRef LoadModule(string filePath)
+    {
+        // These will hold the results from the LLVM functions.
+        LLVMOpaqueMemoryBuffer* memBuffer = null;
+        sbyte* errorMessagePtr = null;
+
+        // Convert the file path to an ANSI string (sbyte*) for LLVM.
+        IntPtr filePathIntPtr = Marshal.StringToHGlobalAnsi(filePath);
+        sbyte* filePathPtr = (sbyte*)filePathIntPtr.ToPointer();
+
+        // Create a memory buffer from the file.
+        int result = LLVM.CreateMemoryBufferWithContentsOfFile(filePathPtr, &memBuffer, &errorMessagePtr);
+        // Free the HGlobal allocated for the file path.
+        Marshal.FreeHGlobal(filePathIntPtr);
+
+        if (result != 0)
+        {
+            string errorMessage = Marshal.PtrToStringAnsi((IntPtr)errorMessagePtr);
+            throw new Exception($"Error reading file {filePath}: {errorMessage}");
+        }
+
+        // Now, parse the IR from the memory buffer.
+        LLVMOpaqueModule* module;
+        result = LLVM.ParseIRInContext(LLVM.GetGlobalContext(), memBuffer, &module, &errorMessagePtr);
+        if (result != 0)
+        {
+            string errorMessage = Marshal.PtrToStringAnsi((IntPtr)errorMessagePtr);
+            throw new Exception($"Error parsing IR in file {filePath}: {errorMessage}");
+        }
+
+        // Return the loaded module.
+        return module;
+    }
+
+    private static unsafe bool LinkModules(LLVMModuleRef mainModule, LLVMModuleRef otherModule)
+    {
+        int linkResult = LLVM.LinkModules2(mainModule, otherModule);
+        return linkResult == 0;
     }
 
     #region Helper Visit Methods

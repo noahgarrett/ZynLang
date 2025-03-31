@@ -1,9 +1,9 @@
+import "std";
+
 fn main() int {
 	let a: int = 10;
 
-	for (let i: int = 0; i < 10; i++) {
-		print("ay boi: %d", i);
-	}
+	print("%d", add(10, 10));
 
-	return a + 2;
+	return 0;
 }
